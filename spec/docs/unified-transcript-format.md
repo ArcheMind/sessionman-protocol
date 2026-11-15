@@ -6,11 +6,11 @@ protocol's home: the specification (this document), the machine-readable
 JSON Schema, and the reference implementations.
 
 - Normative schema: [`schema/unified-transcript.schema.json`](../schema/unified-transcript.schema.json)
-- Go implementation: [`transcript/`](../transcript) (`github.com/ArcheMind/agentx-protocol/transcript`)
-- TypeScript implementation: [`src/`](../src) (npm package `agentx-protocol`)
+- Go implementation: [`transcript/`](../transcript) (`github.com/ArcheMind/sessionman-protocol/go`)
+- TypeScript implementation: [`src/`](../src) (npm package `sessionman-protocol`)
 - Shared conformance fixtures: [`fixtures/`](../fixtures)
 
-Consumers (agentx, chill harness, …) import an implementation from this
+Consumers (SessionMan, chill harness, …) import an implementation from this
 repository; they do not define their own transcript message shapes. Format
 changes land here first — spec + schema + both implementations + fixtures in
 one commit — then consumers upgrade their pinned version.
@@ -115,9 +115,14 @@ Model reasoning. Nullable — absent when the provider does not expose it
 opaque/encrypted (Pi). View derivation preserves thinking blocks as-is;
 consumers that cannot use them simply ignore the block.
 
+`id` is the provider's reasoning item id (Codex). The encrypted `signature`
+can be bound to that item, so a block that loses its `id` may fail to
+rehydrate; it must be carried verbatim wherever the block is stored.
+
 ```json
 {
   "type": "thinking",
+  "id": "string (optional, provider reasoning item id)",
   "text": "string (empty if encrypted)",
   "signature": "string (optional, provider-specific integrity proof)"
 }

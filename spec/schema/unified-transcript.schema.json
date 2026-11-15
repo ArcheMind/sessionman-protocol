@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ArcheMind/agentx-protocol/schema/unified-transcript.schema.json",
-  "title": "AgentX Unified Transcript",
+  "$id": "https://github.com/ArcheMind/sessionman-protocol/schema/unified-transcript.schema.json",
+  "title": "SessionMan Unified Transcript",
   "type": "object",
   "required": ["id", "provider", "messages"],
   "properties": {
@@ -116,6 +116,7 @@
       "required": ["type"],
       "properties": {
         "type": { "const": "thinking" },
+        "id": { "type": "string" },
         "text": { "type": "string", "default": "" },
         "signature": { "type": "string" }
       },

@@ -1,9 +1,9 @@
 {
-  "name": "agentx-protocol",
-  "version": "0.1.0",
+  "name": "sessionman-protocol",
+  "version": "0.5.0",
   "description": "Unified transcript format — TypeScript implementation",
   "license": "MIT",
-  "repository": "github:ArcheMind/agentx-protocol",
+  "repository": "github:ArcheMind/sessionman-protocol",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

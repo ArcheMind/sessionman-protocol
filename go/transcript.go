@@ -1,7 +1,7 @@
-// Package transcript defines the unified transcript format shared by agentx
+// Package transcript defines the unified transcript format shared by SessionMan
 // and downstream consumers. The normative spec lives in
 // docs/unified-transcript-format.md and schema/unified-transcript.schema.json.
-package agentx
+package transcript
 
 import (
 	"encoding/json"
@@ -194,12 +194,17 @@ func ValidateMessage(message Message) error {
 
 func validateBlock(block ContentBlock) error {
 	switch block.Type {
-	case BlockText, BlockThinking:
+	case BlockText:
 		if block.ID != "" || block.Name != "" || block.Input != nil || block.Source != nil {
-			return fmt.Errorf("%s block must not carry id/name/input/source", block.Type)
+			return errors.New("text block must not carry id/name/input/source")
 		}
-		if block.Type == BlockText && block.Signature != "" {
+		if block.Signature != "" {
 			return errors.New("text block must not carry signature")
+		}
+		return nil
+	case BlockThinking:
+		if block.Name != "" || block.Input != nil || block.Source != nil {
+			return errors.New("thinking block must not carry name/input/source")
 		}
 		return nil
 	case BlockImage:

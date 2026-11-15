@@ -108,23 +108,23 @@ warning: PreToolUse is outside the portable hook profile and was not projected
 
 ## 预期投影
 
-实现为每个 Provider 维护独立的 AgentX-owned artifact：
+实现为每个 Provider 维护独立的 SessionMan-owned artifact：
 
 ```text
 .agents/hooks.json
         │
-        ├── Claude AgentX artifact
-        ├── Codex AgentX artifact
-        ├── Gemini AgentX artifact
-        └── Pi AgentX extension
+        ├── Claude SessionMan artifact
+        ├── Codex SessionMan artifact
+        ├── Gemini SessionMan artifact
+        └── Pi SessionMan extension
 ```
 
 这些 artifact 可以是插件、扩展或 Provider 支持的独立配置层。具体路径不是 Protocol 的
 一部分，但实现必须满足：
 
 - 不修改用户已有的原生 Hook。
-- 不覆盖非 AgentX 管理的文件或字段。
-- 删除 AgentX artifact 不影响用户原生配置。
+- 不覆盖非 SessionMan 管理的文件或字段。
+- 删除 SessionMan artifact 不影响用户原生配置。
 - 相同规范输入重复生成相同外部行为。
 - `PreToolUse` 不出现在任何跨 Agent 投影中。
 - `SessionEnd.timeout` 大于 `3` 的 handler 不出现在跨 Agent 投影中，并产生 warning。

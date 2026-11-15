@@ -39,7 +39,7 @@ Provider 文件是从规范配置生成的单向投影，不是第二份事实�
 ```text
 .agents source
       ↓
-AgentX-managed provider artifact
+SessionMan-managed provider artifact
 ```
 
 Agent X 不从投影反向同步，不自动吸收用户的原生配置，也不覆盖不属于 Agent X 的文件或
@@ -99,7 +99,7 @@ Hook 可以额外展示 `event` 和 `command`，Skill 可以额外展示 `name`�
 
 - 规范文件无法解析。
 - portable 必填字段缺失或类型错误。
-- 投影会覆盖非 AgentX 管理的数据。
+- 投影会覆盖非 SessionMan 管理的数据。
 
 以下情况是 warning：
 

@@ -1,0 +1,17 @@
+{
+  "reason": "id is allowed on thinking only as a string; text blocks must not carry id",
+  "session": {
+    "id": "sess-ids",
+    "provider": "codex",
+    "messages": [
+      {
+        "id": "m1",
+        "role": "assistant",
+        "content": [
+          { "type": "text", "text": "hi", "id": "x" },
+          { "type": "thinking", "id": 7, "text": "" }
+        ]
+      }
+    ]
+  }
+}

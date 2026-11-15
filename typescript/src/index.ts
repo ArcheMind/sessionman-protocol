@@ -1,4 +1,4 @@
-// Unified transcript format shared by agentx and downstream consumers.
+// Unified transcript format shared by SessionMan and downstream consumers.
 // Normative spec: docs/unified-transcript-format.md and
 // schema/unified-transcript.schema.json in this repository.
 
@@ -9,6 +9,8 @@ export interface TextBlock {
 
 export interface ThinkingBlock {
   type: "thinking";
+  // Provider reasoning item id; a signature may be bound to it, so it must survive a round trip.
+  id?: string;
   text?: string;
   signature?: string;
 }
@@ -175,7 +177,8 @@ function validateBlock(value: unknown, role: "user" | "assistant" | "system"): s
       if (role !== "assistant") problems.push(`role "${role}" allows only text blocks, got "thinking"`);
       if (value.text !== undefined && typeof value.text !== "string") problems.push("thinking text must be a string");
       if (value.signature !== undefined && typeof value.signature !== "string") problems.push("signature must be a string");
-      forbidKeys(value, ["type", "text", "signature"], problems);
+      if (value.id !== undefined && typeof value.id !== "string") problems.push("thinking id must be a string");
+      forbidKeys(value, ["type", "id", "text", "signature"], problems);
       break;
     case "tool_use":
       if (role !== "assistant") problems.push(`role "${role}" allows only text blocks, got "tool_use"`);

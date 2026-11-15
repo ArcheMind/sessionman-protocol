@@ -1,4 +1,4 @@
-module github.com/ArcheMind/agentx-protocol/go
+module github.com/ArcheMind/sessionman-protocol/go
 
 go 1.25
 

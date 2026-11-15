@@ -1,7 +1,7 @@
-# agentx-protocol
+# sessionman-protocol
 
 Shared formats and portable integration contracts for
-[agentx](https://github.com/ArcheMind/agentx) and downstream consumers.
+[SessionMan](https://github.com/ArcheMind/sessionman) and downstream consumers.
 
 - **Integration principles**: [docs/unified-integration-principles.md](docs/unified-integration-principles.md)
 - **Transcript spec**: [docs/unified-transcript-format.md](docs/unified-transcript-format.md)
@@ -9,8 +9,8 @@ Shared formats and portable integration contracts for
 - **Hook configuration spec**: [docs/unified-hook-configuration.md](docs/unified-hook-configuration.md)
 - **Hook implementation example**: [docs/unified-hook-implementation-example.md](docs/unified-hook-implementation-example.md)
 - **Normative schema**: [schema/unified-transcript.schema.json](schema/unified-transcript.schema.json)
-- **Go**: `github.com/ArcheMind/agentx-protocol/transcript`
-- **TypeScript**: npm package `agentx-protocol` (install from git, pinned to a commit)
+- **Go**: `github.com/ArcheMind/sessionman-protocol/go`
+- **TypeScript**: npm package `sessionman-protocol` (install from git, pinned to a commit)
 - **Fixtures**: [fixtures/](fixtures/) — shared conformance corpus; both
   implementations must accept every `valid/` session and reject every
   `invalid/` session (`invalid/` files wrap the session with a `reason`)

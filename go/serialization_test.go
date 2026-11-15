@@ -1,4 +1,4 @@
-package agentx
+package transcript
 
 import (
 	"encoding/json"
@@ -20,6 +20,7 @@ func TestContentBlockRoundTrip(t *testing.T) {
 				{"type":"thinking", "text":"reasoning", "signature":"signed"},
 				{"type":"text", "text":""},
 				{"type":"thinking", "signature":"opaque"},
+				{"type":"thinking", "id":"rs_1", "signature":"bound-to-item"},
 				{"type":"text", "text":"done"},
 				{"type":"text", "text":""}
 			]},

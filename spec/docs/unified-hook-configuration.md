@@ -286,7 +286,7 @@ Agent X 不实现通用 native passthrough。原生能力由原生 Provider 配�
 ## 投影所有权
 
 Agent X 只从规范位置向 Provider 生成单向投影。投影必须位于实现能够明确识别为
-AgentX-owned 的独立 artifact 中。
+SessionMan-owned 的独立 artifact 中。
 
 - 不修改或覆盖用户已有的原生 Hook。
 - 不从 Provider artifact 反向同步规范配置。
