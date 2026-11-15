@@ -31,6 +31,36 @@ type ContentBlock struct {
 	Source    any    `json:"source,omitempty" yaml:"source,omitempty"`
 }
 
+// serializedContentBlock preserves required text without adding it to other block types.
+type serializedContentBlock struct {
+	Type      string  `json:"type" yaml:"type"`
+	Text      *string `json:"text,omitempty" yaml:"text,omitempty"`
+	Signature string  `json:"signature,omitempty" yaml:"signature,omitempty"`
+	ID        string  `json:"id,omitempty" yaml:"id,omitempty"`
+	Name      string  `json:"name,omitempty" yaml:"name,omitempty"`
+	Input     any     `json:"input,omitempty" yaml:"input,omitempty"`
+	Source    any     `json:"source,omitempty" yaml:"source,omitempty"`
+}
+
+func (b ContentBlock) serialized() serializedContentBlock {
+	var text *string
+	if b.Type == BlockText || b.Text != "" {
+		text = &b.Text
+	}
+	return serializedContentBlock{
+		Type: b.Type, Text: text, Signature: b.Signature,
+		ID: b.ID, Name: b.Name, Input: b.Input, Source: b.Source,
+	}
+}
+
+func (b ContentBlock) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.serialized())
+}
+
+func (b ContentBlock) MarshalYAML() (any, error) {
+	return b.serialized(), nil
+}
+
 type Message struct {
 	ID         string         `json:"id" yaml:"id"`
 	ParentID   string         `json:"parentId,omitempty" yaml:"parentId,omitempty"`
