@@ -7,9 +7,8 @@
 ## 项目输入
 
 ```text
-repo/
-├── .agents/
-│   └── hooks.json
+C/                      # --config-dir or SM_CONFIG_DIR
+├── hooks.json
 └── hooks/
     ├── load-context.sh
     └── check-prompt.sh
@@ -56,18 +55,19 @@ repo/
 }
 ```
 
-`SessionStart` 和 `UserPromptSubmit` 属于 portable profile。`PreToolUse` 是合法的
-Claude/Codex 配置，但不属于 Agent X portable profile。
+`SessionStart`、`UserPromptSubmit` 和 `PreToolUse` 属于 portable profile。
+`PreToolUse` 的 `matcher` 被忽略并产生 warning。
 
 ## 预期列表
 
 ```text
 $ ax hook list
 SCOPE    EVENT             COMMAND                         TARGETS
-project  SessionStart      ./hooks/load-context.sh         claude,codex,gemini,pi
-project  UserPromptSubmit  ./hooks/check-prompt.sh         claude,codex,gemini,pi
+user     SessionStart      ./hooks/load-context.sh         claude,codex,gemini,pi
+user     UserPromptSubmit  ./hooks/check-prompt.sh         claude,codex,gemini,pi
+user     PreToolUse        ./hooks/check-command.sh        claude,codex,gemini,pi
 
-warning: PreToolUse is outside the portable hook profile and was not projected
+warning: PreToolUse matcher "Bash" is ignored
 ```
 
 结构化输出只包含可验证状态：
@@ -76,8 +76,8 @@ warning: PreToolUse is outside the portable hook profile and was not projected
 {
   "hooks": [
     {
-      "scope": "project",
-      "source": "/repo/.agents/hooks.json",
+      "scope": "user",
+      "source": "/C/hooks.json",
       "event": "SessionStart",
       "command": "./hooks/load-context.sh",
       "portable": true,
@@ -85,20 +85,29 @@ warning: PreToolUse is outside the portable hook profile and was not projected
       "warnings": []
     },
     {
-      "scope": "project",
-      "source": "/repo/.agents/hooks.json",
+      "scope": "user",
+      "source": "/C/hooks.json",
       "event": "UserPromptSubmit",
       "command": "./hooks/check-prompt.sh",
       "portable": true,
       "targets": ["claude", "codex", "gemini", "pi"],
       "warnings": []
+    },
+    {
+      "scope": "user",
+      "source": "/C/hooks.json",
+      "event": "PreToolUse",
+      "command": "./hooks/check-command.sh",
+      "portable": true,
+      "targets": ["claude", "codex", "gemini", "pi"],
+      "warnings": ["matcher is ignored"]
     }
   ],
   "warnings": [
     {
-      "source": "/repo/.agents/hooks.json",
+      "source": "/C/hooks.json",
       "event": "PreToolUse",
-      "message": "outside the portable hook profile; not projected"
+      "message": "matcher is ignored"
     }
   ]
 }
@@ -111,7 +120,7 @@ warning: PreToolUse is outside the portable hook profile and was not projected
 实现为每个 Provider 维护独立的 SessionMan-owned artifact：
 
 ```text
-.agents/hooks.json
+<C>/hooks.json
         │
         ├── Claude SessionMan artifact
         ├── Codex SessionMan artifact
@@ -126,7 +135,6 @@ warning: PreToolUse is outside the portable hook profile and was not projected
 - 不覆盖非 SessionMan 管理的文件或字段。
 - 删除 SessionMan artifact 不影响用户原生配置。
 - 相同规范输入重复生成相同外部行为。
-- `PreToolUse` 不出现在任何跨 Agent 投影中。
 - `SessionEnd.timeout` 大于 `3` 的 handler 不出现在跨 Agent 投影中，并产生 warning。
 
 如果 Provider 不能在不覆盖用户数据的情况下创建独立 artifact，该 Provider 的投影失败，
@@ -151,8 +159,7 @@ warning: PreToolUse is outside the portable hook profile and was not projected
 
 该实现不需要：
 
-- 将 `PreToolUse` 自动映射为 Gemini 或 Pi 的相似事件。
 - 展示或同步 `.claude`、`.codex`、`.gemini`、`.pi` 中的任意原生扩展。
-- 从 Provider artifact 反向生成 `.agents/hooks.json`。
+- 从 Provider artifact 反向生成 `<C>/hooks.json`。
 - 判断 Provider 是否已经信任、启用或实际执行某个 Hook。
 - 为多个 Hook 定义优先级、依赖关系或去重规则。

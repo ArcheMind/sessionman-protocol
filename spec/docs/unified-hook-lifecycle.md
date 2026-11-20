@@ -10,6 +10,7 @@ Session
 ├── session.start
 ├── Turn *
 │   ├── turn.before
+│   ├── tool.before *
 │   └── turn.after
 └── session.end
 ```
@@ -21,6 +22,7 @@ Session
 | `session.start` | `SessionStart` | `SessionStart` | `SessionStart` | `session_start` |
 | `session.end` | `SessionEnd` | `SessionEnd` | `SessionEnd` | `session_shutdown` |
 | `turn.before` | `UserPromptSubmit` | `UserPromptSubmit` | `BeforeAgent` | `input` + `before_agent_start` |
+| `tool.before` | `PreToolUse` | `PreToolUse` | `BeforeTool` | `tool_call` |
 | `turn.after` | `Stop` / `StopFailure` | `Stop` / `Interrupt` | `AfterAgent` | `agent_settled` |
 
 Pi 的 `turn_start/turn_end` 不用于公共 Turn：它们表示一次内部模型循环，一个用户请求内可能发生多次。
@@ -141,8 +143,6 @@ system_message?
 - 改写原始 prompt。
 - 改写 system prompt。
 - 更换模型。
-- 修改工具集合。
-- 自动批准后续所有工具调用。
 
 原因是四家不都具备这些能力。Pi 能转换输入，Gemini/Pi 能深入修改 agent context，但 Claude/Codex 的公共安全能力主要是拒绝或附加上下文。
 
@@ -155,6 +155,41 @@ input
 before_agent_start
   → 负责注入 additional_context
 ```
+
+## `tool.before`
+
+定义：每次工具调用执行之前。一个 Turn 内可能触发多次。
+
+公共输入：
+
+```text
+session_id
+turn_id?
+cwd
+tool_call           # { id, name, args }
+```
+
+公共能力：
+
+- 检查工具名和参数。
+- allow/deny 本次工具调用。
+- 返回拒绝原因；该原因作为拒绝结果交给模型。
+
+公共输出：
+
+```text
+decision            # block；省略表示 allow
+reason?
+```
+
+拒绝语义与 `turn.before` 相同：`{"decision":"block","reason":"..."}`，或退出码 `2`
+并将原因写入 stderr。空输出且退出码 `0` 表示允许。其他非零退出码表示 Hook 失败，
+不能隐式拒绝。
+
+不纳入公共能力：
+
+- 改写工具参数（本版本不支持）。
+- 自动批准后续工具调用。
 
 ## `turn.after`
 
@@ -203,6 +238,10 @@ turn.before
   allow_or_deny
   add_context
 
+tool.before
+  observe
+  allow_or_deny
+
 turn.after
   observe
   side_effect
@@ -212,6 +251,7 @@ turn.after
 最重要的限制：
 
 - Session Hook 不参与决策，只负责初始化和清理。
-- Turn Before 是统一策略入口。
+- Turn Before 和 Tool Before 是统一策略入口。
 - Turn After 只观察、执行副作用并可返回用户可见反馈。
-- Prompt 改写、system prompt 改写、模型调用、工具调用全部留在原生扩展层，不进入统一 Hooks。
+- Tool Before 只做 allow/deny，不改写参数。
+- Prompt 改写、system prompt 改写、模型调用留在原生扩展层，不进入统一 Hooks。

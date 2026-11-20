@@ -13,24 +13,23 @@ Agent X 不发明新的 Hook DSL。用户配置采用 Claude Code 与 Codex 已�
 配置语法与公共能力是两层：
 
 - 语法层接受 Claude/Codex `hooks.json`。
-- 公共能力层只保证四个生命周期事件和 command handler。
+- 公共能力层只保证五个公共事件和 command handler。
 - 超出公共 profile 的合法原生配置产生 warning，不使整个配置失败。
 - Agent X 内部的 `session.start` 等名称不出现在用户配置中。
 
 ## 发现位置
 
-规范位置为：
+Hook 定义只从 User Config 目录 `C` 读取：
 
 ```text
-~/.agents/hooks.json          # user scope
-<project>/.agents/hooks.json  # project scope
+<C>/hooks.json
 ```
 
-两个文件同时存在时，其匹配 Hook 全部生效；项目文件不会覆盖用户文件。Hook
-之间不得依赖执行顺序。
+`C` 由 `--config-dir` 或 `SM_CONFIG_DIR` 指定。未指定 `C` 时，统一 Hooks 不生效。
+不存在 user scope 或 project scope 的其他来源。Hook 之间不得依赖执行顺序。
 
-文件内容兼容 Claude/Codex `hooks.json`，但只有上述 Agent X 规范位置属于统一层的
-事实源。原生 Provider 配置继续由原生 Provider 管理。
+文件内容兼容 Claude/Codex `hooks.json`，且 `<C>/hooks.json` 是统一层唯一的事实源。
+原生 Provider 配置继续由原生 Provider 管理。
 
 ## 配置结构
 
@@ -56,6 +55,17 @@ Agent X 不发明新的 Hook DSL。用户配置采用 Claude Code 与 Codex 已�
           {
             "type": "command",
             "command": "./hooks/check-prompt.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/check-tool.sh",
             "timeout": 5
           }
         ]
@@ -94,6 +104,7 @@ Agent X 不发明新的 Hook DSL。用户配置采用 Claude Code 与 Codex 已�
 | `SessionStart` | `session.start` |
 | `SessionEnd` | `session.end` |
 | `UserPromptSubmit` | `turn.before` |
+| `PreToolUse` | `tool.before` |
 | `Stop` | `turn.after` |
 
 事件名区分大小写。
@@ -113,7 +124,7 @@ Agent X 不发明新的 Hook DSL。用户配置采用 Claude Code 与 Codex 已�
 - `matcher` 可省略；省略、空字符串和 `*` 都表示全部匹配。
 - `SessionStart` 的 matcher 匹配公共 `source`。
 - `SessionEnd` 的 matcher 匹配公共 `reason`。
-- `UserPromptSubmit` 和 `Stop` 不提供公共 matcher subject；其 `matcher` 被忽略并产生 warning。
+- `UserPromptSubmit`、`PreToolUse` 和 `Stop` 不提供公共 matcher subject；其 `matcher` 被忽略并产生 warning。
 - 为保证跨运行时一致，portable matcher 应只使用字面值、`|`、`^`、`$` 和 `.*`。
   更复杂但原生合法的正则可以保留，但不参与跨 Agent 投影。
 
@@ -179,6 +190,10 @@ UserPromptSubmit
   model?
   permission_mode?
 
+PreToolUse
+  turn_id?
+  tool_call                 # { id, name, args }
+
 Stop
   turn_id?
   outcome                   # completed | denied | interrupted | error
@@ -243,6 +258,20 @@ Provider 可以附加字段。portable Hook 必须忽略不认识的输入字段
 退出码 `2` 且将原因写入 stderr 是等价的拒绝形式。其他非零退出码表示 Hook 失败，
 不能隐式拒绝 Turn。
 
+### `PreToolUse`
+
+允许时，退出 `0` 且不输出内容。拒绝本次工具调用时：
+
+```json
+{
+  "decision": "block",
+  "reason": "This command is not allowed."
+}
+```
+
+退出码 `2` 且将原因写入 stderr 是等价的拒绝形式。原因作为拒绝结果交给模型。其他
+非零退出码表示 Hook 失败，不能隐式拒绝。本版本不支持改写工具参数。
+
 ### `Stop`
 
 ```json
@@ -278,14 +307,14 @@ Agent X 不实现通用 native passthrough。原生能力由原生 Provider 配�
 - Claude：使用原生事件名、配置结构和 command I/O。
 - Codex：使用原生事件名、配置结构和 command I/O。
 - Gemini：将四个公共事件映射到 `SessionStart`、`SessionEnd`、`BeforeAgent`、`AfterAgent`。
-- Pi：使用公开 ExtensionAPI；`input` 负责 `UserPromptSubmit` 的拒绝，
+- Pi：使用公开 ExtensionAPI；`tool_call` 实现 `PreToolUse` 的拒绝，`input` 负责 `UserPromptSubmit` 的拒绝，
   `before_agent_start` 注入其 `additionalContext`，`agent_settled` 实现公共 `Stop`。
 
 适配器不得用一个新 Turn 模拟当前 Turn 的继续执行，也不得把原生扩展能力伪装成公共能力。
 
 ## 投影所有权
 
-Agent X 只从规范位置向 Provider 生成单向投影。投影必须位于实现能够明确识别为
+Agent X 只从 `<C>/hooks.json` 向 Provider 生成单向投影。投影必须位于实现能够明确识别为
 SessionMan-owned 的独立 artifact 中。
 
 - 不修改或覆盖用户已有的原生 Hook。
