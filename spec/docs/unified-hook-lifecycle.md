@@ -22,7 +22,7 @@ Session
 | `session.start` | `SessionStart` | `SessionStart` | `SessionStart` | `session_start` |
 | `session.end` | `SessionEnd` | `SessionEnd` | `SessionEnd` | `session_shutdown` |
 | `turn.before` | `UserPromptSubmit` | `UserPromptSubmit` | `BeforeAgent` | `input` + `before_agent_start` |
-| `tool.before` | `PreToolUse` | `PreToolUse` | `BeforeTool` | `tool_call` |
+| `tool.before` | `PreToolUse` | `PreToolUse` | — | `tool_call` |
 | `turn.after` | `Stop` / `StopFailure` | `Stop` / `Interrupt` | `AfterAgent` | `agent_settled` |
 
 Pi 的 `turn_start/turn_end` 不用于公共 Turn：它们表示一次内部模型循环，一个用户请求内可能发生多次。

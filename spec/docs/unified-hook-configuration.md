@@ -307,6 +307,7 @@ Agent X 不实现通用 native passthrough。原生能力由原生 Provider 配�
 - Claude：使用原生事件名、配置结构和 command I/O。
 - Codex：使用原生事件名、配置结构和 command I/O。
 - Gemini：将四个公共事件映射到 `SessionStart`、`SessionEnd`、`BeforeAgent`、`AfterAgent`。
+- agy：Hooks 与 MCP 的注入都要求指定 `C`；未指定 `C` 时不向 agy 注入任何内容。
 - Pi：使用公开 ExtensionAPI；`tool_call` 实现 `PreToolUse` 的拒绝，`input` 负责 `UserPromptSubmit` 的拒绝，
   `before_agent_start` 注入其 `additionalContext`，`agent_settled` 实现公共 `Stop`。
 
