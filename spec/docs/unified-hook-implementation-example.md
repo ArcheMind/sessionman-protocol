@@ -61,13 +61,13 @@ C/                      # --config-dir or SM_CONFIG_DIR
 ## 预期列表
 
 ```text
-$ ax hook list
-SCOPE    EVENT             COMMAND                         TARGETS
-user     SessionStart      ./hooks/load-context.sh         claude,codex,gemini,pi
-user     UserPromptSubmit  ./hooks/check-prompt.sh         claude,codex,gemini,pi
-user     PreToolUse        ./hooks/check-command.sh        claude,codex,gemini,pi
+$ SM_CONFIG_DIR=/C sm hook list
+SCOPE    EVENT             COMMAND
+user     SessionStart      ./hooks/load-context.sh
+user     UserPromptSubmit  ./hooks/check-prompt.sh
+user     PreToolUse        ./hooks/check-command.sh
 
-warning: PreToolUse matcher "Bash" is ignored
+warning: PreToolUse matcher has no portable subject; ignored
 ```
 
 结构化输出只包含可验证状态：
@@ -81,7 +81,6 @@ warning: PreToolUse matcher "Bash" is ignored
       "event": "SessionStart",
       "command": "./hooks/load-context.sh",
       "portable": true,
-      "targets": ["claude", "codex", "gemini", "pi"],
       "warnings": []
     },
     {
@@ -90,7 +89,6 @@ warning: PreToolUse matcher "Bash" is ignored
       "event": "UserPromptSubmit",
       "command": "./hooks/check-prompt.sh",
       "portable": true,
-      "targets": ["claude", "codex", "gemini", "pi"],
       "warnings": []
     },
     {
@@ -99,15 +97,14 @@ warning: PreToolUse matcher "Bash" is ignored
       "event": "PreToolUse",
       "command": "./hooks/check-command.sh",
       "portable": true,
-      "targets": ["claude", "codex", "gemini", "pi"],
-      "warnings": ["matcher is ignored"]
+      "warnings": []
     }
   ],
   "warnings": [
     {
       "source": "/C/hooks.json",
       "event": "PreToolUse",
-      "message": "matcher is ignored"
+      "message": "matcher has no portable subject; ignored"
     }
   ]
 }
@@ -124,7 +121,7 @@ warning: PreToolUse matcher "Bash" is ignored
         │
         ├── Claude SessionMan artifact
         ├── Codex SessionMan artifact
-        ├── Gemini SessionMan artifact
+        ├── Agy SessionMan plugin
         └── Pi SessionMan extension
 ```
 
