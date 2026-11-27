@@ -69,7 +69,7 @@ then consumers upgrade their pinned version.
 {
   "protocolVersion": "2.0",
   "id": "string",
-  "provider": "string (e.g. claude | codex | agy | pi | opencode)",
+  "provider": "string (e.g. claude | codex | agy | pi)",
   "isSubagent": false,
   "workspace": "/absolute/path",
   "title": "first human intent (≤96 chars)",
