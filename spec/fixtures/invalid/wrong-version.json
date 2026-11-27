@@ -1,0 +1,9 @@
+{
+  "reason": "protocolVersion must be 2.0",
+  "session": {
+    "protocolVersion": "1.0",
+    "id": "sess-bad-ver",
+    "provider": "claude",
+    "entries": []
+  }
+}

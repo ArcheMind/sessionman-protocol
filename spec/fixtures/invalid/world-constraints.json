@@ -1,0 +1,24 @@
+{
+  "reason": "world toolResult requires mutability=delta and forbids content; world forbids stopReason",
+  "session": {
+    "protocolVersion": "2.0",
+    "id": "sess-world",
+    "provider": "claude",
+    "entries": [
+      {
+        "id": "e1",
+        "source": "world",
+        "mutability": "delta",
+        "content": [{ "type": "text", "text": "cannot carry both" }],
+        "toolResult": { "toolUseId": "tu1", "toolName": "Bash", "result": "ok" }
+      },
+      {
+        "id": "e2",
+        "source": "world",
+        "mutability": "current",
+        "slot": "bad",
+        "toolResult": { "toolUseId": "tu2", "toolName": "Bash", "result": "ok" }
+      }
+    ]
+  }
+}

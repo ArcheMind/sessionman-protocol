@@ -1,24 +1,37 @@
-// Package transcript defines the unified transcript format shared by SessionMan
-// and downstream consumers. The normative spec lives in
-// docs/unified-transcript-format.md and schema/unified-transcript.schema.json.
+// Package transcript defines SessionMan Unified Transcript Protocol 2.0,
+// shared by SessionMan and downstream consumers. The normative spec lives in
+// spec/docs/unified-transcript-format.md and
+// spec/schema/unified-transcript.schema.json.
 package transcript
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 const (
-	RoleUser      = "user"
-	RoleAssistant = "assistant"
-	RoleTool      = "tool"
-	RoleSystem    = "system"
+	ProtocolVersion = "2.0"
+
+	SourceS1    = "s1"
+	SourceS2    = "s2"
+	SourceUser  = "user"
+	SourceWorld = "world"
+
+	MutabilityConstant = "constant"
+	MutabilityCurrent  = "current"
+	MutabilityDelta    = "delta"
 
 	BlockText     = "text"
 	BlockThinking = "thinking"
 	BlockToolUse  = "tool_use"
 	BlockImage    = "image"
+
+	RuntimeSafetyRefusal  = "safety_refusal"
+	RuntimeTurnAborted    = "turn_aborted"
+	RuntimeQuotaExhausted = "quota_exhausted"
+	RuntimeProviderError  = "provider_error"
 )
 
 type ContentBlock struct {
@@ -61,132 +74,286 @@ func (b ContentBlock) MarshalYAML() (any, error) {
 	return b.serialized(), nil
 }
 
-type Message struct {
-	ID         string         `json:"id" yaml:"id"`
-	ParentID   string         `json:"parentId,omitempty" yaml:"parentId,omitempty"`
-	Role       string         `json:"role" yaml:"role"`
-	Content    []ContentBlock `json:"content,omitempty" yaml:"content,omitempty"`
-	Result     any            `json:"result,omitempty" yaml:"result,omitempty"`
-	Timestamp  string         `json:"timestamp,omitempty" yaml:"timestamp,omitempty"`
-	RecordedAt string         `json:"recordedAt,omitempty" yaml:"recordedAt,omitempty"`
-	Model      string         `json:"model,omitempty" yaml:"model,omitempty"`
-	StopReason string         `json:"stopReason,omitempty" yaml:"stopReason,omitempty"`
-	ToolUseID  string         `json:"toolUseId,omitempty" yaml:"toolUseId,omitempty"`
-	ToolName   string         `json:"toolName,omitempty" yaml:"toolName,omitempty"`
-	IsError    bool           `json:"isError,omitempty" yaml:"isError,omitempty"`
+type ToolResult struct {
+	ToolUseID string `json:"toolUseId" yaml:"toolUseId"`
+	ToolName  string `json:"toolName" yaml:"toolName"`
+	Result    any    `json:"result,omitempty" yaml:"result,omitempty"`
+	IsError   bool   `json:"isError,omitempty" yaml:"isError,omitempty"`
 }
 
-// MarshalJSON keeps `content` present (possibly empty) on every role except
-// tool, where the schema forbids it; omitempty alone would drop empty arrays.
-func (m Message) MarshalJSON() ([]byte, error) {
-	type plain Message
-	if m.Role == RoleTool {
-		return json.Marshal(plain(m))
+type Producer struct {
+	Provider string `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Model    string `json:"model,omitempty" yaml:"model,omitempty"`
+	Origin   string `json:"origin,omitempty" yaml:"origin,omitempty"`
+}
+
+type Entry struct {
+	ID                 string         `json:"id" yaml:"id"`
+	ParentID           *string        `json:"parentId,omitempty" yaml:"parentId,omitempty"`
+	Source             string         `json:"source" yaml:"source"`
+	Mutability         string         `json:"mutability" yaml:"mutability"`
+	Slot               string         `json:"slot,omitempty" yaml:"slot,omitempty"`
+	Hash               string         `json:"hash,omitempty" yaml:"hash,omitempty"`
+	SupersedesBeforeID string         `json:"supersedesBeforeId,omitempty" yaml:"supersedesBeforeId,omitempty"`
+	Content            []ContentBlock `json:"content,omitempty" yaml:"content,omitempty"`
+	ToolResult         *ToolResult    `json:"toolResult,omitempty" yaml:"toolResult,omitempty"`
+	Producer           *Producer      `json:"producer,omitempty" yaml:"producer,omitempty"`
+	StopReason         string         `json:"stopReason,omitempty" yaml:"stopReason,omitempty"`
+	Timestamp          string         `json:"timestamp,omitempty" yaml:"timestamp,omitempty"`
+	RecordedAt         string         `json:"recordedAt,omitempty" yaml:"recordedAt,omitempty"`
+}
+
+// MarshalJSON keeps `content` present (possibly empty) on every entry without
+// toolResult, and omits it on toolResult entries where the schema forbids it.
+func (e Entry) MarshalJSON() ([]byte, error) {
+	type plain Entry
+	if e.ToolResult != nil {
+		return json.Marshal(plain(e))
 	}
-	content := m.Content
+	content := e.Content
 	if content == nil {
 		content = []ContentBlock{}
 	}
-	m.Content = nil
+	e.Content = nil
 	return json.Marshal(struct {
 		plain
 		Content []ContentBlock `json:"content"`
-	}{plain(m), content})
+	}{plain(e), content})
+}
+
+type RuntimeEvent struct {
+	ID           string `json:"id" yaml:"id"`
+	AfterEntryID string `json:"afterEntryId,omitempty" yaml:"afterEntryId,omitempty"`
+	Provider     string `json:"provider" yaml:"provider"`
+	Model        string `json:"model,omitempty" yaml:"model,omitempty"`
+	Kind         string `json:"kind" yaml:"kind"`
+	Code         string `json:"code,omitempty" yaml:"code,omitempty"`
+	Message      string `json:"message,omitempty" yaml:"message,omitempty"`
+	Timestamp    string `json:"timestamp,omitempty" yaml:"timestamp,omitempty"`
 }
 
 type Session struct {
-	ID           string    `json:"id" yaml:"id"`
-	Provider     string    `json:"provider" yaml:"provider"`
-	IsSubagent   bool      `json:"isSubagent,omitempty" yaml:"isSubagent,omitempty"`
-	Workspace    string    `json:"workspace,omitempty" yaml:"workspace,omitempty"`
-	Title        string    `json:"title,omitempty" yaml:"title,omitempty"`
-	StartedAt    string    `json:"startedAt,omitempty" yaml:"startedAt,omitempty"`
-	UpdatedAt    string    `json:"updatedAt,omitempty" yaml:"updatedAt,omitempty"`
-	MessageCount int       `json:"messageCount" yaml:"messageCount"`
-	Source       string    `json:"source,omitempty" yaml:"source,omitempty"`
-	Messages     []Message `json:"messages" yaml:"messages"`
+	ProtocolVersion string         `json:"protocolVersion" yaml:"protocolVersion"`
+	ID              string         `json:"id" yaml:"id"`
+	Provider        string         `json:"provider" yaml:"provider"`
+	IsSubagent      bool           `json:"isSubagent,omitempty" yaml:"isSubagent,omitempty"`
+	Workspace       string         `json:"workspace,omitempty" yaml:"workspace,omitempty"`
+	Title           string         `json:"title,omitempty" yaml:"title,omitempty"`
+	StartedAt       string         `json:"startedAt,omitempty" yaml:"startedAt,omitempty"`
+	UpdatedAt       string         `json:"updatedAt,omitempty" yaml:"updatedAt,omitempty"`
+	EntryCount      int            `json:"entryCount" yaml:"entryCount"`
+	Source          string         `json:"source,omitempty" yaml:"source,omitempty"`
+	Entries         []Entry        `json:"entries" yaml:"entries"`
+	RuntimeEvents   []RuntimeEvent `json:"runtimeEvents,omitempty" yaml:"runtimeEvents,omitempty"`
 }
 
-// ValidateSession enforces the schema's structural rules plus message-id
-// uniqueness. Cross-message referential checks (parentId/toolUseId
-// resolution) are intentionally not enforced; sessions may be truncated.
+// MarshalJSON ensures entries serializes as [] instead of null when empty.
+func (s Session) MarshalJSON() ([]byte, error) {
+	type plain Session
+	entries := s.Entries
+	if entries == nil {
+		entries = []Entry{}
+	}
+	s.Entries = nil
+	return json.Marshal(struct {
+		plain
+		Entries []Entry `json:"entries"`
+	}{plain(s), entries})
+}
+
+// TextContent joins all text blocks in an entry with newlines.
+func TextContent(entry Entry) string {
+	if entry.ToolResult != nil {
+		return ""
+	}
+	parts := make([]string, 0, len(entry.Content))
+	for _, b := range entry.Content {
+		if b.Type == BlockText {
+			parts = append(parts, b.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
+}
+
+// ValidateSession enforces the 2.0 schema's structural rules plus entry-id and
+// runtime-event-id uniqueness. Cross-entry referential checks (parentId,
+// toolUseId, supersedesBeforeId) are intentionally not enforced.
 func ValidateSession(session Session) error {
 	var errs []error
+	if session.ProtocolVersion != ProtocolVersion {
+		errs = append(errs, fmt.Errorf("session: protocolVersion must be %q, got %q", ProtocolVersion, session.ProtocolVersion))
+	}
 	if session.ID == "" {
 		errs = append(errs, errors.New("session: id must be non-empty"))
 	}
 	if session.Provider == "" {
 		errs = append(errs, errors.New("session: provider must be non-empty"))
 	}
-	if err := ValidateMessages(session.Messages); err != nil {
+	if session.EntryCount < 0 {
+		errs = append(errs, errors.New("session: entryCount must be non-negative"))
+	}
+	if err := ValidateEntries(session.Entries); err != nil {
+		errs = append(errs, err)
+	}
+	if err := ValidateRuntimeEvents(session.RuntimeEvents); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }
 
-func ValidateMessages(messages []Message) error {
+func ValidateEntries(entries []Entry) error {
 	var errs []error
-	seen := make(map[string]bool, len(messages))
-	for i, message := range messages {
-		if message.ID != "" {
-			if seen[message.ID] {
-				errs = append(errs, fmt.Errorf("messages[%d]: duplicate id %q", i, message.ID))
+	seen := make(map[string]bool, len(entries))
+	for i, entry := range entries {
+		if entry.ID != "" {
+			if seen[entry.ID] {
+				errs = append(errs, fmt.Errorf("entries[%d]: duplicate id %q", i, entry.ID))
 			}
-			seen[message.ID] = true
+			seen[entry.ID] = true
 		}
-		if err := ValidateMessage(message); err != nil {
-			errs = append(errs, fmt.Errorf("messages[%d]: %w", i, err))
+		if err := ValidateEntry(entry); err != nil {
+			errs = append(errs, fmt.Errorf("entries[%d]: %w", i, err))
 		}
 	}
 	return errors.Join(errs...)
 }
 
-func ValidateMessage(message Message) error {
+func ValidateEntry(entry Entry) error {
 	var errs []error
-	if message.ID == "" {
+	if entry.ID == "" {
 		errs = append(errs, errors.New("id must be non-empty"))
 	}
-	switch message.Role {
-	case RoleUser:
-		if message.Model != "" || message.StopReason != "" {
-			errs = append(errs, fmt.Errorf("role %q must not carry model/stopReason", message.Role))
+
+	switch entry.Mutability {
+	case MutabilityConstant:
+		if entry.Slot == "" {
+			errs = append(errs, errors.New("mutability \"constant\" requires non-empty slot"))
 		}
-		for i, block := range message.Content {
-			if block.Type != BlockText && block.Type != BlockImage {
-				errs = append(errs, fmt.Errorf("content[%d]: role %q allows only text/image blocks, got %q", i, message.Role, block.Type))
+		if entry.SupersedesBeforeID != "" {
+			errs = append(errs, errors.New("mutability \"constant\" must not carry supersedesBeforeId"))
+		}
+		if entry.ToolResult != nil {
+			errs = append(errs, errors.New("mutability \"constant\" must not carry toolResult"))
+		}
+		if entry.StopReason != "" {
+			errs = append(errs, errors.New("mutability \"constant\" must not carry stopReason"))
+		}
+	case MutabilityCurrent:
+		if entry.Slot == "" {
+			errs = append(errs, errors.New("mutability \"current\" requires non-empty slot"))
+		}
+		if entry.ToolResult != nil {
+			errs = append(errs, errors.New("mutability \"current\" must not carry toolResult"))
+		}
+		if entry.StopReason != "" {
+			errs = append(errs, errors.New("mutability \"current\" must not carry stopReason"))
+		}
+	case MutabilityDelta:
+		if entry.Slot != "" {
+			errs = append(errs, errors.New("mutability \"delta\" must not carry slot"))
+		}
+		if entry.Hash != "" {
+			errs = append(errs, errors.New("mutability \"delta\" must not carry hash"))
+		}
+		if entry.SupersedesBeforeID != "" {
+			errs = append(errs, errors.New("mutability \"delta\" must not carry supersedesBeforeId"))
+		}
+	default:
+		errs = append(errs, fmt.Errorf("unknown mutability %q", entry.Mutability))
+	}
+
+	switch entry.Source {
+	case SourceS1:
+		if entry.ToolResult != nil {
+			errs = append(errs, errors.New("source \"s1\" must not carry toolResult"))
+		}
+		if entry.StopReason != "" {
+			errs = append(errs, errors.New("source \"s1\" must not carry stopReason"))
+		}
+		for i, b := range entry.Content {
+			if b.Type != BlockText {
+				errs = append(errs, fmt.Errorf("content[%d]: source \"s1\" allows only text blocks, got %q", i, b.Type))
 			}
 		}
-	case RoleSystem:
-		if message.Model != "" || message.StopReason != "" {
-			errs = append(errs, fmt.Errorf("role %q must not carry model/stopReason", message.Role))
+	case SourceS2:
+		if entry.Mutability != "" && entry.Mutability != MutabilityDelta {
+			errs = append(errs, fmt.Errorf("source \"s2\" requires mutability \"delta\", got %q", entry.Mutability))
 		}
-		for i, block := range message.Content {
-			if block.Type != BlockText {
-				errs = append(errs, fmt.Errorf("content[%d]: role %q allows only text blocks, got %q", i, message.Role, block.Type))
+		if entry.ToolResult != nil {
+			errs = append(errs, errors.New("source \"s2\" must not carry toolResult"))
+		}
+		for i, b := range entry.Content {
+			if b.Type == BlockImage {
+				errs = append(errs, fmt.Errorf("content[%d]: source \"s2\" does not allow image blocks", i))
 			}
 		}
-	case RoleTool:
-		if message.Model != "" || message.StopReason != "" {
-			errs = append(errs, fmt.Errorf("role %q must not carry model/stopReason", message.Role))
+	case SourceUser:
+		if entry.ToolResult != nil {
+			errs = append(errs, errors.New("source \"user\" must not carry toolResult"))
 		}
-		if len(message.Content) > 0 {
-			errs = append(errs, errors.New("tool message must not carry content; use result"))
+		if entry.StopReason != "" {
+			errs = append(errs, errors.New("source \"user\" must not carry stopReason"))
 		}
-	case RoleAssistant:
-		for i, block := range message.Content {
-			if block.Type == BlockImage {
-				errs = append(errs, fmt.Errorf("content[%d]: role %q does not allow image blocks", i, message.Role))
+		for i, b := range entry.Content {
+			if b.Type != BlockText && b.Type != BlockImage {
+				errs = append(errs, fmt.Errorf("content[%d]: source \"user\" allows only text/image blocks, got %q", i, b.Type))
+			}
+		}
+	case SourceWorld:
+		if entry.StopReason != "" {
+			errs = append(errs, errors.New("source \"world\" must not carry stopReason"))
+		}
+		if entry.ToolResult != nil {
+			if entry.Mutability != "" && entry.Mutability != MutabilityDelta {
+				errs = append(errs, errors.New("toolResult requires mutability \"delta\""))
+			}
+			if len(entry.Content) > 0 {
+				errs = append(errs, errors.New("world entry with toolResult must not carry content"))
+			}
+			if entry.ToolResult.ToolUseID == "" {
+				errs = append(errs, errors.New("toolResult requires non-empty toolUseId"))
+			}
+			if entry.ToolResult.ToolName == "" {
+				errs = append(errs, errors.New("toolResult requires non-empty toolName"))
+			}
+		} else {
+			for i, b := range entry.Content {
+				if b.Type != BlockText && b.Type != BlockImage {
+					errs = append(errs, fmt.Errorf("content[%d]: source \"world\" allows only text/image blocks, got %q", i, b.Type))
+				}
 			}
 		}
 	default:
-		errs = append(errs, fmt.Errorf("unknown role %q", message.Role))
+		errs = append(errs, fmt.Errorf("unknown source %q", entry.Source))
 	}
-	if message.Role != RoleTool && message.Result != nil {
-		errs = append(errs, fmt.Errorf("role %q must not carry result", message.Role))
-	}
-	for i, block := range message.Content {
+
+	for i, block := range entry.Content {
 		if err := validateBlock(block); err != nil {
 			errs = append(errs, fmt.Errorf("content[%d]: %w", i, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func ValidateRuntimeEvents(events []RuntimeEvent) error {
+	var errs []error
+	seen := make(map[string]bool, len(events))
+	for i, ev := range events {
+		if ev.ID == "" {
+			errs = append(errs, fmt.Errorf("runtimeEvents[%d]: id must be non-empty", i))
+		} else {
+			if seen[ev.ID] {
+				errs = append(errs, fmt.Errorf("runtimeEvents[%d]: duplicate id %q", i, ev.ID))
+			}
+			seen[ev.ID] = true
+		}
+		if ev.Provider == "" {
+			errs = append(errs, fmt.Errorf("runtimeEvents[%d]: provider must be non-empty", i))
+		}
+		switch ev.Kind {
+		case RuntimeSafetyRefusal, RuntimeTurnAborted, RuntimeQuotaExhausted, RuntimeProviderError:
+		default:
+			errs = append(errs, fmt.Errorf("runtimeEvents[%d]: unknown kind %q", i, ev.Kind))
 		}
 	}
 	return errors.Join(errs...)

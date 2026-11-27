@@ -1,0 +1,129 @@
+{
+  "protocolVersion": "2.0",
+  "id": "sess-full-20",
+  "provider": "claude",
+  "workspace": "/tmp/demo",
+  "title": "fix the failing test",
+  "startedAt": "2026-11-27T01:00:00.000000000Z",
+  "updatedAt": "2026-11-27T01:05:00.000000000Z",
+  "entryCount": 11,
+  "source": "/home/u/.claude/projects/demo/sess.jsonl",
+  "entries": [
+    {
+      "id": "id-1",
+      "source": "s1",
+      "mutability": "constant",
+      "slot": "identity",
+      "hash": "sha256:abc",
+      "producer": { "origin": "s1:thought-surfacing" },
+      "content": [{ "type": "text", "text": "I remember who I am." }]
+    },
+    {
+      "id": "rules-1",
+      "source": "world",
+      "mutability": "constant",
+      "slot": "workspace:rules",
+      "content": [{ "type": "text", "text": "# AGENTS.md\nAlways run make test." }]
+    },
+    {
+      "id": "board-1",
+      "source": "s1",
+      "mutability": "current",
+      "slot": "board-overview",
+      "producer": { "origin": "s1:board-overview" },
+      "content": [{ "type": "text", "text": "tasks:1 open" }]
+    },
+    {
+      "id": "board-2",
+      "source": "s1",
+      "mutability": "current",
+      "slot": "board-overview",
+      "producer": { "origin": "s1:board-overview" },
+      "content": [{ "type": "text", "text": "tasks:1 done" }]
+    },
+    {
+      "id": "u1",
+      "parentId": null,
+      "source": "user",
+      "mutability": "delta",
+      "content": [
+        { "type": "text", "text": "fix the failing test" },
+        { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": "iVBORw0KGgo=" } }
+      ],
+      "timestamp": "2026-11-27T01:00:00.000000000Z"
+    },
+    {
+      "id": "a1",
+      "parentId": "u1",
+      "source": "s2",
+      "mutability": "delta",
+      "producer": { "provider": "claude", "model": "claude-opus-5-5" },
+      "stopReason": "tool_use",
+      "content": [
+        { "type": "thinking", "text": "check test output first", "signature": "sig-abc" },
+        { "type": "text", "text": "Running the suite." },
+        { "type": "tool_use", "id": "tu1", "name": "Bash", "input": { "command": "make test" } }
+      ]
+    },
+    {
+      "id": "t1",
+      "parentId": "a1",
+      "source": "world",
+      "mutability": "delta",
+      "toolResult": {
+        "toolUseId": "tu1",
+        "toolName": "Bash",
+        "isError": true,
+        "result": "1 test failed"
+      }
+    },
+    {
+      "id": "w-notice-1",
+      "parentId": "t1",
+      "source": "world",
+      "mutability": "delta",
+      "producer": { "origin": "subagent" },
+      "content": [{ "type": "text", "text": "subagent-1 finished: patch ready" }]
+    },
+    {
+      "id": "s1-hook-1",
+      "parentId": "w-notice-1",
+      "source": "s1",
+      "mutability": "delta",
+      "producer": { "origin": "s1:waking-hook" },
+      "content": [{ "type": "text", "text": "recalled prior fix pattern" }]
+    },
+    {
+      "id": "summary-1",
+      "source": "s1",
+      "mutability": "current",
+      "slot": "compaction-summary",
+      "supersedesBeforeId": "w-notice-1",
+      "content": [{ "type": "text", "text": "Earlier: ran make test and saw 1 failure." }]
+    },
+    {
+      "id": "a2",
+      "parentId": "s1-hook-1",
+      "source": "s2",
+      "mutability": "delta",
+      "producer": { "provider": "codex", "model": "gpt-6.1-sol" },
+      "stopReason": "end_turn",
+      "content": [
+        { "type": "thinking", "id": "rs_42", "text": "", "signature": "enc-xyz" },
+        { "type": "text", "text": "All tests pass now." }
+      ]
+    }
+  ],
+  "runtimeEvents": [
+    {
+      "id": "re-1",
+      "afterEntryId": "a1",
+      "provider": "claude",
+      "model": "claude-opus-5-5",
+      "kind": "safety_refusal",
+      "code": "reasoning_extraction",
+      "message": "Safeguards flagged message",
+      "timestamp": "2026-11-27T01:02:00.000000000Z"
+    }
+  ]
+}

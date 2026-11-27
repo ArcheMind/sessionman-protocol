@@ -1,0 +1,14 @@
+{
+  "id": "sess-thinking-id",
+  "provider": "codex",
+  "messages": [
+    {
+      "id": "m1",
+      "role": "assistant",
+      "content": [
+        { "type": "thinking", "id": "rs_1", "text": "", "signature": "opaque" },
+        { "type": "text", "text": "done" }
+      ]
+    }
+  ]
+}

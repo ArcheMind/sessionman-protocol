@@ -1,0 +1,16 @@
+{
+  "reason": "user forbids thinking/tool_use blocks and toolResult",
+  "session": {
+    "protocolVersion": "2.0",
+    "id": "sess-user",
+    "provider": "claude",
+    "entries": [
+      {
+        "id": "e1",
+        "source": "user",
+        "mutability": "delta",
+        "content": [{ "type": "tool_use", "id": "tu1", "name": "Bash", "input": {} }]
+      }
+    ]
+  }
+}

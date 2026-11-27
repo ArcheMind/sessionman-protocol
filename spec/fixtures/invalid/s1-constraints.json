@@ -1,0 +1,23 @@
+{
+  "reason": "s1 allows only text blocks and forbids stopReason and toolResult",
+  "session": {
+    "protocolVersion": "2.0",
+    "id": "sess-s1",
+    "provider": "claude",
+    "entries": [
+      {
+        "id": "e1",
+        "source": "s1",
+        "mutability": "delta",
+        "content": [{ "type": "thinking", "text": "harness cannot fake thinking" }]
+      },
+      {
+        "id": "e2",
+        "source": "s1",
+        "mutability": "delta",
+        "stopReason": "end_turn",
+        "content": [{ "type": "text", "text": "no stopReason" }]
+      }
+    ]
+  }
+}

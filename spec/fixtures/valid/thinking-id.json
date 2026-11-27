@@ -1,14 +1,29 @@
 {
-  "id": "sess-thinking-id",
+  "protocolVersion": "2.0",
+  "id": "sess-thinking-id-20",
   "provider": "codex",
-  "messages": [
+  "entryCount": 2,
+  "entries": [
     {
-      "id": "m1",
-      "role": "assistant",
+      "id": "e1",
+      "source": "s2",
+      "mutability": "delta",
+      "producer": { "provider": "codex", "model": "gpt-6.1-sol" },
       "content": [
         { "type": "thinking", "id": "rs_1", "text": "", "signature": "opaque" },
         { "type": "text", "text": "done" }
       ]
+    },
+    {
+      "id": "e2",
+      "parentId": "e1",
+      "source": "world",
+      "mutability": "delta",
+      "toolResult": {
+        "toolUseId": "tu-array",
+        "toolName": "Read",
+        "result": [{ "type": "text", "text": "line 1" }]
+      }
     }
   ]
 }

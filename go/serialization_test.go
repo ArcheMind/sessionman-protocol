@@ -11,9 +11,10 @@ import (
 
 func TestContentBlockRoundTrip(t *testing.T) {
 	const input = `{
-		"id":"empty-text", "provider":"test", "messageCount":3,
-		"messages":[
-			{"id":"assistant", "role":"assistant", "model":"test-model", "content":[
+		"protocolVersion":"2.0",
+		"id":"empty-text", "provider":"test", "entryCount":3,
+		"entries":[
+			{"id":"assistant", "source":"s2", "mutability":"delta", "producer":{"provider":"test", "model":"test-model"}, "content":[
 				{"type":"text", "text":""},
 				{"type":"tool_use", "id":"call-1", "name":"read", "input":{"path":"file", "options":[true, 7]}},
 				{"type":"text", "text":""},
@@ -24,12 +25,12 @@ func TestContentBlockRoundTrip(t *testing.T) {
 				{"type":"text", "text":"done"},
 				{"type":"text", "text":""}
 			]},
-			{"id":"user", "role":"user", "content":[
+			{"id":"user", "source":"user", "mutability":"delta", "content":[
 				{"type":"text", "text":""},
 				{"type":"image", "source":{"type":"base64", "media_type":"image/png", "data":"abc"}},
 				{"type":"text", "text":""}
 			]},
-			{"id":"system", "role":"system", "content":[{"type":"text", "text":""}]}
+			{"id":"s1-const", "source":"s1", "mutability":"constant", "slot":"identity", "content":[{"type":"text", "text":""}]}
 		]
 	}`
 	var original Session
@@ -58,7 +59,6 @@ func TestContentBlockRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Check serialized fields before decoding into structs can hide omissions.
 			var raw map[string]any
 			if err := format.unmarshal(encoded, &raw); err != nil {
 				t.Fatal(err)
@@ -96,7 +96,6 @@ func TestContentBlockRoundTrip(t *testing.T) {
 }
 
 func TestContentBlockSerializationPreservesOtherFields(t *testing.T) {
-	// Invalid combinations must remain visible to validation, rather than lose data.
 	original := ContentBlock{
 		Type: BlockToolUse, Text: "unexpected", Signature: "signature",
 		ID: "call-1", Name: "read", Input: map[string]any{"path": "file"},

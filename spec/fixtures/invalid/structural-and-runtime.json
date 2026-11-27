@@ -1,0 +1,15 @@
+{
+  "reason": "structural and block errors: duplicate entry id, id on text block, bad runtime event kind",
+  "session": {
+    "protocolVersion": "2.0",
+    "id": "sess-struct",
+    "provider": "codex",
+    "entries": [
+      { "id": "dup", "source": "user", "mutability": "delta", "content": [{ "type": "text", "text": "a", "id": "bad" }] },
+      { "id": "dup", "source": "user", "mutability": "delta", "content": [{ "type": "text", "text": "b" }] }
+    ],
+    "runtimeEvents": [
+      { "id": "re-1", "provider": "codex", "kind": "unknown_kind" }
+    ]
+  }
+}

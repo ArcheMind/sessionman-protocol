@@ -1,0 +1,31 @@
+{
+  "reason": "mutability constraints: constant/current require slot; delta forbids slot/hash; constant forbids supersedesBeforeId",
+  "session": {
+    "protocolVersion": "2.0",
+    "id": "sess-mut",
+    "provider": "claude",
+    "entries": [
+      {
+        "id": "e1",
+        "source": "s1",
+        "mutability": "constant",
+        "content": [{ "type": "text", "text": "missing slot" }]
+      },
+      {
+        "id": "e2",
+        "source": "s1",
+        "mutability": "constant",
+        "slot": "id",
+        "supersedesBeforeId": "e0",
+        "content": [{ "type": "text", "text": "constant cannot supersede" }]
+      },
+      {
+        "id": "e3",
+        "source": "user",
+        "mutability": "delta",
+        "slot": "nope",
+        "content": [{ "type": "text", "text": "delta cannot have slot" }]
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "reason": "legacy v1 session envelope (messages + role) must be rejected by strict 2.0 validation",
+  "session": {
+    "id": "sess-legacy-v1",
+    "provider": "claude",
+    "messages": [
+      { "id": "m1", "role": "user", "content": [{ "type": "text", "text": "hi" }] }
+    ]
+  }
+}

@@ -1,10 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ArcheMind/sessionman-protocol/schema/unified-transcript.schema.json",
-  "title": "SessionMan Unified Transcript",
+  "title": "SessionMan Unified Transcript 2.0",
   "type": "object",
-  "required": ["id", "provider", "messages"],
+  "required": ["protocolVersion", "id", "provider", "entries"],
+  "additionalProperties": false,
   "properties": {
+    "protocolVersion": { "const": "2.0" },
     "id": { "type": "string", "minLength": 1 },
     "provider": { "type": "string", "minLength": 1 },
     "isSubagent": { "type": "boolean", "default": false },
@@ -12,52 +14,100 @@
     "title": { "type": "string" },
     "startedAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" },
-    "messageCount": { "type": "integer" },
+    "entryCount": { "type": "integer", "minimum": 0 },
     "source": { "type": "string" },
-    "messages": { "type": "array", "items": { "$ref": "#/$defs/message" } }
+    "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "runtimeEvents": { "type": "array", "items": { "$ref": "#/$defs/runtimeEvent" } }
   },
   "$defs": {
-    "message": {
+    "entry": {
       "type": "object",
-      "required": ["id", "role"],
+      "required": ["id", "source", "mutability"],
+      "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "parentId": { "type": ["string", "null"] },
-        "role": { "enum": ["user", "assistant", "tool", "system"] },
+        "source": { "enum": ["s1", "s2", "user", "world"] },
+        "mutability": { "enum": ["constant", "current", "delta"] },
+        "slot": { "type": "string", "minLength": 1 },
+        "hash": { "type": "string", "minLength": 1 },
+        "supersedesBeforeId": { "type": "string", "minLength": 1 },
         "content": { "type": "array", "items": { "$ref": "#/$defs/contentBlock" } },
-        "result": {},
-        "timestamp": { "type": "string", "format": "date-time" },
-        "recordedAt": { "type": "string", "format": "date-time" },
-        "model": { "type": "string" },
+        "toolResult": { "$ref": "#/$defs/toolResult" },
+        "producer": { "$ref": "#/$defs/producer" },
         "stopReason": { "type": "string" },
-        "toolUseId": { "type": "string", "minLength": 1 },
-        "toolName": { "type": "string", "minLength": 1 },
-        "isError": { "type": "boolean" }
+        "timestamp": { "type": "string", "format": "date-time" },
+        "recordedAt": { "type": "string", "format": "date-time" }
       },
       "allOf": [
         {
-          "if": { "properties": { "role": { "const": "tool" } } },
+          "if": { "properties": { "mutability": { "const": "delta" } } },
           "then": {
-            "required": ["toolUseId", "toolName"],
             "properties": {
-              "content": false,
-              "model": false,
-              "stopReason": false
+              "slot": false,
+              "hash": false,
+              "supersedesBeforeId": false
             }
           },
           "else": {
-            "required": ["content"],
+            "required": ["slot", "content"],
             "properties": {
-              "result": false,
-              "toolUseId": false,
-              "toolName": false,
-              "isError": false
+              "toolResult": false,
+              "stopReason": false
             }
           }
         },
         {
-          "if": { "properties": { "role": { "const": "user" } } },
+          "if": { "properties": { "mutability": { "const": "constant" } } },
           "then": {
+            "properties": {
+              "supersedesBeforeId": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "source": { "const": "s1" } } },
+          "then": {
+            "required": ["content"],
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/textBlock" }
+              },
+              "toolResult": false,
+              "stopReason": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "source": { "const": "s2" } } },
+          "then": {
+            "required": ["content"],
+            "properties": {
+              "mutability": { "const": "delta" },
+              "content": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    { "$ref": "#/$defs/textBlock" },
+                    { "$ref": "#/$defs/thinkingBlock" },
+                    { "$ref": "#/$defs/toolUseBlock" }
+                  ]
+                }
+              },
+              "toolResult": false
+            }
+          },
+          "else": {
+            "properties": {
+              "stopReason": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "source": { "const": "user" } } },
+          "then": {
+            "required": ["content"],
             "properties": {
               "content": {
                 "type": "array",
@@ -68,39 +118,77 @@
                   ]
                 }
               },
-              "model": false,
-              "stopReason": false
+              "toolResult": false
             }
           }
         },
         {
-          "if": { "properties": { "role": { "const": "assistant" } } },
+          "if": { "properties": { "source": { "const": "world" } } },
           "then": {
-            "properties": {
-              "content": {
-                "type": "array",
-                "items": {
-                  "oneOf": [
-                    { "$ref": "#/$defs/textBlock" },
-                    { "$ref": "#/$defs/thinkingBlock" },
-                    { "$ref": "#/$defs/toolUseBlock" }
-                  ]
+            "oneOf": [
+              {
+                "required": ["toolResult"],
+                "properties": {
+                  "mutability": { "const": "delta" },
+                  "content": false
+                }
+              },
+              {
+                "required": ["content"],
+                "properties": {
+                  "toolResult": false,
+                  "content": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        { "$ref": "#/$defs/textBlock" },
+                        { "$ref": "#/$defs/imageBlock" }
+                      ]
+                    }
+                  }
                 }
               }
-            }
-          }
-        },
-        {
-          "if": { "properties": { "role": { "const": "system" } } },
-          "then": {
-            "properties": {
-              "content": { "type": "array", "items": { "$ref": "#/$defs/textBlock" } },
-              "model": false,
-              "stopReason": false
-            }
+            ]
           }
         }
       ]
+    },
+    "toolResult": {
+      "type": "object",
+      "required": ["toolUseId", "toolName"],
+      "additionalProperties": false,
+      "properties": {
+        "toolUseId": { "type": "string", "minLength": 1 },
+        "toolName": { "type": "string", "minLength": 1 },
+        "result": {},
+        "isError": { "type": "boolean" }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "origin": { "type": "string", "minLength": 1 }
+      }
+    },
+    "runtimeEvent": {
+      "type": "object",
+      "required": ["id", "provider", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "afterEntryId": { "type": "string" },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string" },
+        "kind": {
+          "enum": ["safety_refusal", "turn_aborted", "quota_exhausted", "provider_error"]
+        },
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
     },
     "textBlock": {
       "type": "object",
