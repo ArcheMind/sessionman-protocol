@@ -1,6 +1,6 @@
 # Unified Integration Principles
 
-本文定义 Agent X 对 Skills、Hooks 及后续跨 Agent 能力的统一原则。具体格式规范不得
+本文定义 SessionMan 对 Skills、Hooks 及后续跨 Agent 能力的统一原则。具体格式规范不得
 扩大这些原则的范围。
 
 ## 用户目标
@@ -17,17 +17,17 @@
 
 ## 标准优先
 
-Agent X 优先采用已经存在且被用户实际使用的格式：
+SessionMan 优先采用已经存在且被用户实际使用的格式：
 
 - Skills 使用 Agent Skills `SKILL.md`。
 - Hooks 使用 Claude/Codex `hooks.json`。
 
-只有现有格式无法表达公共能力时，才允许增加最小 Agent X 扩展。内部统一事件名、缓存
+只有现有格式无法表达公共能力时，才允许增加最小 SessionMan 扩展。内部统一事件名、缓存
 键和投影元数据不得泄漏为第二套用户 DSL。
 
 ## 单一事实源
 
-用户只编辑 Agent X 的规范位置：
+用户只编辑 SessionMan 的规范位置：
 
 ```text
 ~/.agents/...
@@ -42,7 +42,7 @@ Provider 文件是从规范配置生成的单向投影，不是第二份事实�
 SessionMan-managed provider artifact
 ```
 
-Agent X 不从投影反向同步，不自动吸收用户的原生配置，也不覆盖不属于 Agent X 的文件或
+SessionMan 不从投影反向同步，不自动吸收用户的原生配置，也不覆盖不属于 SessionMan 的文件或
 字段。投影必须能够安全地重新生成和删除。
 
 ## 公共交集
@@ -56,14 +56,14 @@ portable profile 只包含所有目标 Agent 都能可靠实现的能力。任�
 - 不参与跨 Agent 适配。
 - 不使同一文件中的 portable 配置失效。
 
-原生能力继续由原生 Agent 和原生配置管理。Agent X 不实现通用 native passthrough 引擎。
+原生能力继续由原生 Agent 和原生配置管理。SessionMan 不实现通用 native passthrough 引擎。
 
 ## 只管理自己的状态
 
 统一 inventory 只展示：
 
-- Agent X 规范位置中的配置。
-- Agent X 自己生成的 Provider 投影。
+- SessionMan 规范位置中的配置。
+- SessionMan 自己生成的 Provider 投影。
 
 它不枚举任意 Claude/Codex 插件，不解析 Gemini 扩展包内部结构，也不静态分析 Pi
 TypeScript 源码。原生扩展由原生 Agent 展示。

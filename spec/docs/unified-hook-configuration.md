@@ -1,13 +1,13 @@
 # Unified Hook Configuration
 
-本文定义 Agent X Protocol 的用户侧 Hook 配置。生命周期和能力边界由
+本文定义 SessionMan Protocol 的用户侧 Hook 配置。生命周期和能力边界由
 [Unified Hook Lifecycle](unified-hook-lifecycle.md) 定义；所有实现同时遵守
 [Unified Integration Principles](unified-integration-principles.md)。
 
 ## 设计原则
 
-Agent X 不发明新的 Hook DSL。用户配置采用 Claude Code 与 Codex 已使用的
-`hooks.json` 结构；Agent X 只定义其中能够跨 Claude、Codex、Gemini 和 Pi
+SessionMan 不发明新的 Hook DSL。用户配置采用 Claude Code 与 Codex 已使用的
+`hooks.json` 结构；SessionMan 只定义其中能够跨 Claude、Codex、Gemini 和 Pi
 运行的公共 profile。
 
 配置语法与公共能力是两层：
@@ -15,7 +15,7 @@ Agent X 不发明新的 Hook DSL。用户配置采用 Claude Code 与 Codex 已�
 - 语法层接受 Claude/Codex `hooks.json`。
 - 公共能力层只保证五个公共事件和 command handler。
 - 超出公共 profile 的合法原生配置产生 warning，不使整个配置失败。
-- Agent X 内部的 `session.start` 等名称不出现在用户配置中。
+- SessionMan 内部的 `session.start` 等名称不出现在用户配置中。
 
 ## 发现位置
 
@@ -99,7 +99,7 @@ Hook 定义只从 User Config 目录 `C` 读取：
 
 ### 公共事件
 
-| 用户配置事件 | Agent X Protocol 事件 |
+| 用户配置事件 | SessionMan Protocol 事件 |
 |---|---|
 | `SessionStart` | `session.start` |
 | `SessionEnd` | `session.end` |
@@ -152,7 +152,7 @@ Hook 定义只从 User Config 目录 `C` 读取：
 同一事件的多个匹配 handler 可能并发执行。配置不得依赖声明顺序，也不得依赖另一个
 handler 先完成。
 
-`SessionEnd.timeout` 大于 `3` 是合法的原生配置，但超出 portable profile：Agent X
+`SessionEnd.timeout` 大于 `3` 是合法的原生配置，但超出 portable profile：SessionMan
 产生 warning，且不跨 Agent 投影该 handler。这个限制来自公共目标中最短的可靠清理窗口；
 `session.end` 本身仍然是 best-effort，不应承担强一致任务。
 
@@ -206,7 +206,7 @@ Provider 可以附加字段。portable Hook 必须忽略不认识的输入字段
 
 ## 命令输出
 
-用户侧输出继续采用 Claude/Codex 形态；Agent X 在内部转换为统一决策。
+用户侧输出继续采用 Claude/Codex 形态；SessionMan 在内部转换为统一决策。
 
 ### `SessionStart`
 
@@ -296,7 +296,7 @@ Provider 可以附加字段。portable Hook 必须忽略不认识的输入字段
 | 改变执行语义的字段，例如 `async` | warning；不跨 Agent 执行对应 handler |
 | 公共事件中的非公共输出能力 | warning；忽略该能力，不影响同一输出中的公共字段 |
 
-Agent X 不实现通用 native passthrough。原生能力由原生 Provider 配置管理。跳过超出项时，
+SessionMan 不实现通用 native passthrough。原生能力由原生 Provider 配置管理。跳过超出项时，
 同一文件中的其他公共 Hook 仍然有效。
 
 无效 JSON、缺少 `hooks`、空 `command`、非正数 `timeout` 等不是“超出公共 profile”，
@@ -315,7 +315,7 @@ Agent X 不实现通用 native passthrough。原生能力由原生 Provider 配�
 
 ## 投影所有权
 
-Agent X 只从 `<C>/hooks.json` 向 Provider 生成单向投影。投影必须位于实现能够明确识别为
+SessionMan 只从 `<C>/hooks.json` 向 Provider 生成单向投影。投影必须位于实现能够明确识别为
 SessionMan-owned 的独立 artifact 中。
 
 - 不修改或覆盖用户已有的原生 Hook。
