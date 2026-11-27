@@ -5,27 +5,27 @@ type slotKey struct {
 	slot   string
 }
 
-// Materialize projects a 2.0 session into the deterministic entry sequence
+// Materialize projects a 2.0 session into the deterministic message sequence
 // ready for cross-agent serialization:
-//  1. Drops world×constant entries (target agents reload workspace rules from disk).
-//  2. Deduplicates constant entries by (source, slot), keeping the latest value
+//  1. Drops world×constant messages (target agents reload workspace rules from disk).
+//  2. Deduplicates constant messages by (source, slot), keeping the latest value
 //     in first-slot order.
-//  3. Deduplicates current entries by (source, slot), keeping the latest value
-//     in first-slot order; any current entry carrying supersedesBeforeId trims
-//     earlier delta entries and sits at the cut boundary.
-//  4. Preserves surviving delta entries in causal order and closes any dangling
+//  3. Deduplicates current messages by (source, slot), keeping the latest value
+//     in first-slot order; any current message carrying supersedesBeforeId trims
+//     earlier delta messages and sits at the cut boundary.
+//  4. Preserves surviving delta messages in causal order and closes any dangling
 //     s2 tool_use with a synthetic interrupted world×delta toolResult.
 //  5. Never includes runtimeEvents.
-func Materialize(session Session) []Entry {
+func Materialize(session Session) []Message {
 	var constantOrder []slotKey
-	constants := make(map[slotKey]Entry)
+	constants := make(map[slotKey]Message)
 
 	var currentOrder []slotKey
-	currents := make(map[slotKey]Entry)
+	currents := make(map[slotKey]Message)
 
-	var deltas []Entry
+	var deltas []Message
 
-	for _, e := range session.Entries {
+	for _, e := range session.Messages {
 		switch e.Mutability {
 		case MutabilityConstant:
 			if e.Source == SourceWorld {
@@ -47,9 +47,9 @@ func Materialize(session Session) []Entry {
 		}
 	}
 
-	// Partition current entries into regular snapshots vs compaction boundaries.
-	var regularCurrents []Entry
-	var boundaryCurrents []Entry
+	// Partition current messages into regular snapshots vs compaction boundaries.
+	var regularCurrents []Message
+	var boundaryCurrents []Message
 	cutIndex := 0
 	deltaIdx := make(map[string]int, len(deltas))
 	for i, d := range deltas {
@@ -76,7 +76,7 @@ func Materialize(session Session) []Entry {
 		}
 	}
 
-	out := make([]Entry, 0, len(constantOrder)+len(regularCurrents)+len(boundaryCurrents)+len(survivingDeltas))
+	out := make([]Message, 0, len(constantOrder)+len(regularCurrents)+len(boundaryCurrents)+len(survivingDeltas))
 	for _, k := range constantOrder {
 		out = append(out, constants[k])
 	}
@@ -90,7 +90,7 @@ func Materialize(session Session) []Entry {
 			for _, b := range d.Content {
 				if b.Type == BlockToolUse && !resolvedTools[b.ID] {
 					p := parent
-					out = append(out, Entry{
+					out = append(out, Message{
 						ID:         "synthetic-interrupted-" + b.ID,
 						ParentID:   &p,
 						Source:     SourceWorld,

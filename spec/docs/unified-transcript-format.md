@@ -17,7 +17,7 @@ then consumers upgrade their pinned version.
 
 ## Design principles
 
-1. **Two orthogonal axes replace `role`.** Every portable entry is classified by
+1. **Two orthogonal axes replace `role`.** Every portable message is classified by
    its origin (`source`) and how it evolves over time (`mutability`). Native
    channels, cross-agent restoration, TUI turn boundaries, and deduplication
    derive strictly from these structural fields.
@@ -27,7 +27,7 @@ then consumers upgrade their pinned version.
    aborted turns, quota exhaustion, provider errors) live in top-level
    `runtimeEvents[]` for audit and diagnostics and are **never replayed** into
    model context.
-3. **Static world is dropped on restore.** `world × constant` entries (such as
+3. **Static world is dropped on restore.** `world × constant` messages (such as
    workspace rule files `AGENTS.md` / `CLAUDE.md`) are dropped when restoring
    into a target agent; the target agent reloads its own workspace rules from
    disk.
@@ -51,8 +51,8 @@ then consumers upgrade their pinned version.
 | Value | Meaning |
 |---|---|
 | `constant` | Session-invariant premise, keyed by `slot`. Position-independent; latest copy per `(source, slot)` wins. |
-| `current` | Mutable state snapshot, keyed by `slot`. Newer entries with the same `(source, slot)` supersede older ones; only the latest copy is materialized. |
-| `delta` | Immutable chronological event on the causal chain. Order matters; all entries are preserved. |
+| `current` | Mutable state snapshot, keyed by `slot`. Newer messages with the same `(source, slot)` supersede older ones; only the latest copy is materialized. |
+| `delta` | Immutable chronological event on the causal chain. Order matters; all messages are preserved. |
 
 ### The 4×3 matrix & cross-agent restore rules
 
@@ -75,14 +75,14 @@ then consumers upgrade their pinned version.
   "title": "first human intent (≤96 chars)",
   "startedAt": "RFC3339Nano UTC",
   "updatedAt": "RFC3339Nano UTC",
-  "entryCount": 0,
+  "messageCount": 0,
   "source": "native file path",
-  "entries": [ "...Entry[]" ],
+  "messages": [ "...Message[]" ],
   "runtimeEvents": [ "...RuntimeEvent[] (optional)" ]
 }
 ```
 
-## Entry
+## Message
 
 ```json
 {
@@ -130,7 +130,7 @@ then consumers upgrade their pinned version.
 ### Tool result
 
 `toolResult.result` is any JSON value carried verbatim from the provider. Absent
-means empty output. When a serializer writes a `toolResult` entry into a
+means empty output. When a serializer writes a `toolResult` message into a
 destination's native format, it writes `result` verbatim if the destination
 accepts that shape; otherwise it writes the text projection (for a block array,
 `text` fields joined with `\n`; for any other non-string value, compact JSON).
@@ -142,8 +142,8 @@ Native shapes per destination:
 
 ### Causal chain
 
-`parentId` links `delta` entries to their causal predecessor. The first delta of
-a session has `parentId: null` (or omitted). `constant` and `current` entries
+`parentId` links `delta` messages to their causal predecessor. The first delta of
+a session has `parentId: null` (or omitted). `constant` and `current` messages
 are position-independent snapshots keyed by `(source, slot)`.
 
 ## ContentBlock
@@ -158,7 +158,7 @@ Content is an ordered array of typed blocks discriminated by `type`.
 
 ### image
 
-Allowed in `user` and `world` entries with `content`. `source` is a free-form
+Allowed in `user` and `world` messages with `content`. `source` is a free-form
 object carried verbatim from the provider.
 
 ```json
@@ -195,14 +195,14 @@ Allowed only in `s2 × delta`.
 
 ## RuntimeEvent (carrier boundary)
 
-Execution-carrier incidents are recorded outside `entries[]` so diagnostics and
+Execution-carrier incidents are recorded outside `messages[]` so diagnostics and
 UIs retain full visibility while cross-agent replay never feeds provider errors
 or safety refusals back into model context.
 
 ```json
 {
   "id": "string",
-  "afterEntryId": "string (optional)",
+  "afterMessageId": "string (optional)",
   "provider": "string",
   "model": "string (optional)",
   "kind": "safety_refusal | turn_aborted | quota_exhausted | provider_error",
@@ -215,17 +215,17 @@ or safety refusals back into model context.
 ## Deterministic materialization
 
 Before serializing a 2.0 session for a target agent, `Materialize(session)`
-projects `entries[]` deterministically:
+projects `messages[]` deterministically:
 
 1. **Drop `world × constant`** (target agent loads workspace rules from disk).
-2. **Deduplicate `constant`** by `(source, slot)`, keeping the last entry in
+2. **Deduplicate `constant`** by `(source, slot)`, keeping the last message in
    input order, placed first (stable prefix for prompt caching).
-3. **Deduplicate `current`** by `(source, slot)`, keeping the last entry in
-   input order. If a surviving `current` entry declares `supersedesBeforeId`,
-   delta entries strictly before that entry id are omitted and the summary is
-   placed at the cut boundary. Remaining `current` entries are placed after
+3. **Deduplicate `current`** by `(source, slot)`, keeping the last message in
+   input order. If a surviving `current` message declares `supersedesBeforeId`,
+   delta messages strictly before that message id are omitted and the summary is
+   placed at the cut boundary. Remaining `current` messages are placed after
    constants (or before the final user/world turn to preserve prefix cache).
-4. **Preserve `delta`** entries in causal order.
+4. **Preserve `delta`** messages in causal order.
 5. **Close dangling `tool_use` calls.** Any `s2 × delta` `tool_use` without a
    matching `world × delta` `toolResult` (e.g. after a `turn_aborted` or
    `safety_refusal` runtime event) receives a synthetic interrupted `toolResult`
@@ -238,7 +238,7 @@ Channel selection follows verified model-visibility rules (Claude Code's
 `system/informational` records and all providers' unsigned native thinking
 fields are invisible to the model):
 
-| 2.0 Entry | Claude Code | Codex CLI | AGY | Pi |
+| 2.0 Message | Claude Code | Codex CLI | AGY | Pi |
 |---|---|---|---|---|
 | `s1` (`constant` / `current` / `delta`) | `user(isMeta: true)` | `developer` | `SYSTEM_MESSAGE` | `system` |
 | `user` (`constant` / `current`) | `user(isMeta: true)` | `developer` | `SYSTEM_MESSAGE` | `system` |
@@ -260,7 +260,7 @@ fields are invisible to the model):
   of a refused production session showed that even unlabelled foreign reasoning
   placed in `user(isMeta: true)` can still trigger Claude's
   `[reasoning_extraction]` safety classifier, whereas omitting foreign thinking
-  while keeping `s1` entries in `user(isMeta: true)` and dropping `runtimeEvents`
+  while keeping `s1` messages in `user(isMeta: true)` and dropping `runtimeEvents`
   eliminated the classifier stop completely. Accordingly, canonical transcripts
   always preserve `thinking` blocks verbatim in `s2 × delta`, while target
   serializers project foreign unsigned thinking into the target's harness
@@ -303,7 +303,7 @@ Both SDKs expose `UpgradeFromV1` / `upgradeFromV1` and `ParseSession` /
 `parseSession` to upgrade v0.x/v1 (`messages[]` with `role`) sessions without
 content inspection:
 
-| v1 `Message.role` | v2 `Entry` |
+| v1 `Message.role` | v2 `Message` |
 |---|---|
 | `user` | `source: "user"`, `mutability: "delta"`, `content` preserved |
 | `tool` | `source: "world"`, `mutability: "delta"`, `toolResult: { toolUseId, toolName, result, isError }` |
@@ -323,7 +323,7 @@ files (`offload-*.json`, v1 or 2.0).
 The normative constraints live in
 [`schema/unified-transcript.schema.json`](../schema/unified-transcript.schema.json).
 Both implementations expose validators enforcing every schema rule plus
-entry-id uniqueness and runtime-event-id uniqueness within a session.
-Cross-entry referential checks (`parentId` / `toolUseId` / `supersedesBeforeId`
+message-id uniqueness and runtime-event-id uniqueness within a session.
+Cross-message referential checks (`parentId` / `toolUseId` / `supersedesBeforeId`
 resolution) are intentionally not enforced: native sessions may be truncated
 mid-chain.

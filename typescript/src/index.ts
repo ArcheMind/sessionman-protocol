@@ -51,7 +51,7 @@ export interface Producer {
   origin?: string;
 }
 
-export interface Entry {
+export interface Message {
   id: string;
   parentId?: string | null;
   source: Source;
@@ -69,7 +69,7 @@ export interface Entry {
 
 export interface RuntimeEvent {
   id: string;
-  afterEntryId?: string;
+  afterMessageId?: string;
   provider: string;
   model?: string;
   kind: RuntimeEventKind;
@@ -87,9 +87,9 @@ export interface Session {
   title?: string;
   startedAt?: string;
   updatedAt?: string;
-  entryCount?: number;
+  messageCount?: number;
   source?: string;
-  entries: Entry[];
+  messages: Message[];
   runtimeEvents?: RuntimeEvent[];
 }
 
@@ -139,9 +139,9 @@ const SESSION_KEYS = [
   "title",
   "startedAt",
   "updatedAt",
-  "entryCount",
+  "messageCount",
   "source",
-  "entries",
+  "messages",
   "runtimeEvents",
 ];
 const ENTRY_KEYS = [
@@ -189,15 +189,15 @@ export function validateSession(value: unknown): string[] {
   if (!isNonEmptyString(value.id)) problems.push("session: id must be a non-empty string");
   if (!isNonEmptyString(value.provider)) problems.push("session: provider must be a non-empty string");
   if (
-    value.entryCount !== undefined &&
-    (typeof value.entryCount !== "number" || !Number.isInteger(value.entryCount) || value.entryCount < 0)
+    value.messageCount !== undefined &&
+    (typeof value.messageCount !== "number" || !Number.isInteger(value.messageCount) || value.messageCount < 0)
   ) {
-    problems.push("session: entryCount must be a non-negative integer");
+    problems.push("session: messageCount must be a non-negative integer");
   }
-  if (!Array.isArray(value.entries)) {
-    problems.push("session: entries must be an array");
+  if (!Array.isArray(value.messages)) {
+    problems.push("session: messages must be an array");
   } else {
-    problems.push(...validateEntries(value.entries));
+    problems.push(...validateMessages(value.messages));
   }
   if (value.runtimeEvents !== undefined) {
     if (!Array.isArray(value.runtimeEvents)) {
@@ -209,23 +209,23 @@ export function validateSession(value: unknown): string[] {
   return problems;
 }
 
-export function validateEntries(value: unknown): string[] {
-  if (!Array.isArray(value)) return ["entries: must be an array"];
+export function validateMessages(value: unknown): string[] {
+  if (!Array.isArray(value)) return ["messages: must be an array"];
   const problems: string[] = [];
   const seen = new Set<string>();
-  value.forEach((entry, index) => {
-    if (isRecord(entry) && isNonEmptyString(entry.id)) {
-      if (seen.has(entry.id)) {
-        problems.push(`entries[${index}]: duplicate id ${JSON.stringify(entry.id)}`);
+  value.forEach((message, index) => {
+    if (isRecord(message) && isNonEmptyString(message.id)) {
+      if (seen.has(message.id)) {
+        problems.push(`messages[${index}]: duplicate id ${JSON.stringify(message.id)}`);
       }
-      seen.add(entry.id);
+      seen.add(message.id);
     }
-    problems.push(...validateEntry(entry).map((p) => `entries[${index}]: ${p}`));
+    problems.push(...validateMessage(message).map((p) => `messages[${index}]: ${p}`));
   });
   return problems;
 }
 
-export function validateEntry(value: unknown): string[] {
+export function validateMessage(value: unknown): string[] {
   if (!isRecord(value)) return ["must be an object"];
   const problems: string[] = [];
   forbidKeys(value, ENTRY_KEYS, problems);
@@ -315,7 +315,7 @@ export function validateEntry(value: unknown): string[] {
 
   if (source === "world" && value.toolResult !== undefined) {
     if (value.content !== undefined) {
-      problems.push("world entry with toolResult must not carry content");
+      problems.push("world message with toolResult must not carry content");
     }
     if (!isRecord(value.toolResult)) {
       problems.push("toolResult must be an object");
@@ -358,7 +358,7 @@ export function validateRuntimeEvents(value: unknown): string[] {
     }
     forbidKeys(
       ev,
-      ["id", "afterEntryId", "provider", "model", "kind", "code", "message", "timestamp"],
+      ["id", "afterMessageId", "provider", "model", "kind", "code", "message", "timestamp"],
       problems,
       `runtimeEvents[${index}]: `,
     );
@@ -421,14 +421,14 @@ function validateBlock(value: unknown, source: Source): string[] {
   return problems;
 }
 
-export function materialize(session: Session): Entry[] {
+export function materialize(session: Session): Message[] {
   const constantOrder: string[] = [];
-  const constants = new Map<string, Entry>();
+  const constants = new Map<string, Message>();
   const currentOrder: string[] = [];
-  const currents = new Map<string, Entry>();
-  const deltas: Entry[] = [];
+  const currents = new Map<string, Message>();
+  const deltas: Message[] = [];
 
-  for (const e of session.entries) {
+  for (const e of session.messages) {
     if (e.mutability === "constant") {
       if (e.source === "world") continue;
       const key = `${e.source}\0${e.slot}`;
@@ -443,8 +443,8 @@ export function materialize(session: Session): Entry[] {
     }
   }
 
-  const regularCurrents: Entry[] = [];
-  const boundaryCurrents: Entry[] = [];
+  const regularCurrents: Message[] = [];
+  const boundaryCurrents: Message[] = [];
   let cutIndex = 0;
   const deltaIdx = new Map<string, number>();
   deltas.forEach((d, idx) => deltaIdx.set(d.id, idx));
@@ -468,7 +468,7 @@ export function materialize(session: Session): Entry[] {
     }
   }
 
-  const out: Entry[] = [];
+  const out: Message[] = [];
   for (const key of constantOrder) out.push(constants.get(key)!);
   out.push(...regularCurrents, ...boundaryCurrents);
 
@@ -498,8 +498,8 @@ export function materialize(session: Session): Entry[] {
 }
 
 export function upgradeFromV1(v1: V1Session): Session {
-  const entries: Entry[] = v1.messages.map((m, idx) => {
-    const base: Partial<Entry> = {
+  const messages: Message[] = v1.messages.map((m, idx) => {
+    const base: Partial<Message> = {
       id: m.id,
       mutability: "delta",
       ...(m.parentId !== undefined ? { parentId: m.parentId } : {}),
@@ -508,7 +508,7 @@ export function upgradeFromV1(v1: V1Session): Session {
     };
     switch (m.role) {
       case "user":
-        return { ...base, source: "user", content: m.content ?? [] } as Entry;
+        return { ...base, source: "user", content: m.content ?? [] } as Message;
       case "tool":
         return {
           ...base,
@@ -519,7 +519,7 @@ export function upgradeFromV1(v1: V1Session): Session {
             ...(m.result !== undefined ? { result: m.result } : {}),
             ...(m.isError ? { isError: true } : {}),
           },
-        } as Entry;
+        } as Message;
       case "assistant": {
         const producer: Producer = {};
         if (v1.provider) producer.provider = v1.provider;
@@ -530,10 +530,10 @@ export function upgradeFromV1(v1: V1Session): Session {
           content: m.content ?? [],
           ...(Object.keys(producer).length > 0 ? { producer } : {}),
           ...(m.stopReason !== undefined ? { stopReason: m.stopReason } : {}),
-        } as Entry;
+        } as Message;
       }
       case "system":
-        return { ...base, source: "s1", content: m.content ?? [] } as Entry;
+        return { ...base, source: "s1", content: m.content ?? [] } as Message;
       default:
         throw new Error(`messages[${idx}]: unknown v1 role ${JSON.stringify(m.role)}`);
     }
@@ -548,9 +548,9 @@ export function upgradeFromV1(v1: V1Session): Session {
     ...(v1.title !== undefined ? { title: v1.title } : {}),
     ...(v1.startedAt !== undefined ? { startedAt: v1.startedAt } : {}),
     ...(v1.updatedAt !== undefined ? { updatedAt: v1.updatedAt } : {}),
-    entryCount: v1.messageCount ?? entries.length,
+    messageCount: v1.messageCount ?? messages.length,
     ...(v1.source !== undefined ? { source: v1.source } : {}),
-    entries,
+    messages,
   };
   const problems = validateSession(session);
   if (problems.length > 0) {
@@ -561,7 +561,7 @@ export function upgradeFromV1(v1: V1Session): Session {
 
 export function parseSession(value: unknown): Session {
   if (!isRecord(value)) throw new Error("session: must be an object");
-  if (value.protocolVersion === PROTOCOL_VERSION || ("entries" in value && !("messages" in value))) {
+  if (value.protocolVersion === PROTOCOL_VERSION) {
     const problems = validateSession(value);
     if (problems.length > 0) {
       throw new Error(`invalid 2.0 session: ${problems.join("; ")}`);
@@ -579,8 +579,8 @@ export const isImageBlock = (block: ContentBlock): block is ImageBlock => block.
 export const isThinkingBlock = (block: ContentBlock): block is ThinkingBlock => block.type === "thinking";
 export const isToolUseBlock = (block: ContentBlock): block is ToolUseBlock => block.type === "tool_use";
 
-export const textContent = (entry: Entry): string =>
-  (entry.toolResult ? [] : (entry.content ?? []))
+export const textContent = (message: Message): string =>
+  (message.toolResult ? [] : (message.content ?? []))
     .filter(isTextBlock)
     .map((block) => block.text)
     .join("\n");

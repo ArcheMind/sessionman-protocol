@@ -6,9 +6,9 @@
   "title": "fix the failing test",
   "startedAt": "2026-11-27T01:00:00.000000000Z",
   "updatedAt": "2026-11-27T01:05:00.000000000Z",
-  "entryCount": 11,
+  "messageCount": 11,
   "source": "/home/u/.claude/projects/demo/sess.jsonl",
-  "entries": [
+  "messages": [
     {
       "id": "id-1",
       "source": "s1",
@@ -117,7 +117,7 @@
   "runtimeEvents": [
     {
       "id": "re-1",
-      "afterEntryId": "a1",
+      "afterMessageId": "a1",
       "provider": "claude",
       "model": "claude-opus-5-5",
       "kind": "safety_refusal",

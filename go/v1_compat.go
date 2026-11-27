@@ -42,9 +42,9 @@ type V1Session struct {
 // UpgradeFromV1 performs a pure structural conversion from a v1 session to 2.0
 // without inspecting or rewriting message content.
 func UpgradeFromV1(v1 V1Session) (Session, error) {
-	entries := make([]Entry, 0, len(v1.Messages))
+	messages := make([]Message, 0, len(v1.Messages))
 	for i, m := range v1.Messages {
-		entry := Entry{
+		message := Message{
 			ID:         m.ID,
 			ParentID:   m.ParentID,
 			Mutability: MutabilityDelta,
@@ -53,37 +53,37 @@ func UpgradeFromV1(v1 V1Session) (Session, error) {
 		}
 		switch m.Role {
 		case "user":
-			entry.Source = SourceUser
-			entry.Content = m.Content
+			message.Source = SourceUser
+			message.Content = m.Content
 		case "tool":
-			entry.Source = SourceWorld
-			entry.ToolResult = &ToolResult{
+			message.Source = SourceWorld
+			message.ToolResult = &ToolResult{
 				ToolUseID: m.ToolUseID,
 				ToolName:  m.ToolName,
 				Result:    m.Result,
 				IsError:   m.IsError,
 			}
 		case "assistant":
-			entry.Source = SourceS2
-			entry.Content = m.Content
-			entry.StopReason = m.StopReason
+			message.Source = SourceS2
+			message.Content = m.Content
+			message.StopReason = m.StopReason
 			if v1.Provider != "" || m.Model != "" {
-				entry.Producer = &Producer{
+				message.Producer = &Producer{
 					Provider: v1.Provider,
 					Model:    m.Model,
 				}
 			}
 		case "system":
-			entry.Source = SourceS1
-			entry.Content = m.Content
+			message.Source = SourceS1
+			message.Content = m.Content
 		default:
 			return Session{}, fmt.Errorf("messages[%d]: unknown v1 role %q", i, m.Role)
 		}
-		entries = append(entries, entry)
+		messages = append(messages, message)
 	}
 	count := v1.MessageCount
-	if count == 0 && len(entries) > 0 {
-		count = len(entries)
+	if count == 0 && len(messages) > 0 {
+		count = len(messages)
 	}
 	out := Session{
 		ProtocolVersion: ProtocolVersion,
@@ -94,9 +94,9 @@ func UpgradeFromV1(v1 V1Session) (Session, error) {
 		Title:           v1.Title,
 		StartedAt:       v1.StartedAt,
 		UpdatedAt:       v1.UpdatedAt,
-		EntryCount:      count,
+		MessageCount:      count,
 		Source:          v1.Source,
-		Entries:         entries,
+		Messages:         messages,
 	}
 	if err := ValidateSession(out); err != nil {
 		return Session{}, err
@@ -121,8 +121,6 @@ func ParseSession(data []byte) (Session, error) {
 func parseSessionWith(data []byte, unmarshal func([]byte, any) error) (Session, error) {
 	var probe struct {
 		ProtocolVersion string `json:"protocolVersion" yaml:"protocolVersion"`
-		Entries         []any  `json:"entries" yaml:"entries"`
-		Messages        []any  `json:"messages" yaml:"messages"`
 	}
 	if err := unmarshal(data, &probe); err != nil {
 		return Session{}, err
@@ -132,10 +130,9 @@ func parseSessionWith(data []byte, unmarshal func([]byte, any) error) (Session, 
 	if err := unmarshal(data, &raw); err != nil {
 		return Session{}, err
 	}
-	_, hasEntries := raw["entries"]
 	_, hasMessages := raw["messages"]
 
-	if probe.ProtocolVersion == ProtocolVersion || (hasEntries && !hasMessages) {
+	if probe.ProtocolVersion == ProtocolVersion {
 		var s Session
 		if err := unmarshal(data, &s); err != nil {
 			return Session{}, err

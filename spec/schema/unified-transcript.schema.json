@@ -3,7 +3,7 @@
   "$id": "https://github.com/ArcheMind/sessionman-protocol/schema/unified-transcript.schema.json",
   "title": "SessionMan Unified Transcript 2.0",
   "type": "object",
-  "required": ["protocolVersion", "id", "provider", "entries"],
+  "required": ["protocolVersion", "id", "provider", "messages"],
   "additionalProperties": false,
   "properties": {
     "protocolVersion": { "const": "2.0" },
@@ -14,13 +14,13 @@
     "title": { "type": "string" },
     "startedAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" },
-    "entryCount": { "type": "integer", "minimum": 0 },
+    "messageCount": { "type": "integer", "minimum": 0 },
     "source": { "type": "string" },
-    "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "messages": { "type": "array", "items": { "$ref": "#/$defs/message" } },
     "runtimeEvents": { "type": "array", "items": { "$ref": "#/$defs/runtimeEvent" } }
   },
   "$defs": {
-    "entry": {
+    "message": {
       "type": "object",
       "required": ["id", "source", "mutability"],
       "additionalProperties": false,
@@ -179,7 +179,7 @@
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "afterEntryId": { "type": "string" },
+        "afterMessageId": { "type": "string" },
         "provider": { "type": "string", "minLength": 1 },
         "model": { "type": "string" },
         "kind": {

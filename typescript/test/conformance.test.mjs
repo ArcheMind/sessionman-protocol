@@ -66,7 +66,7 @@ test("materialize: drops world×constant, deduplicates slots, applies summary bo
     protocolVersion: "2.0",
     id: "sess-dangling",
     provider: "claude",
-    entries: [
+    messages: [
       {
         id: "a1",
         source: "s2",
@@ -74,7 +74,7 @@ test("materialize: drops world×constant, deduplicates slots, applies summary bo
         content: [{ type: "tool_use", id: "call-orphan", name: "Bash", input: { cmd: "ls" } }],
       },
     ],
-    runtimeEvents: [{ id: "re-1", afterEntryId: "a1", provider: "claude", kind: "turn_aborted" }],
+    runtimeEvents: [{ id: "re-1", afterMessageId: "a1", provider: "claude", kind: "turn_aborted" }],
   };
   const matDangling = materialize(dangling);
   assert.equal(matDangling.length, 2);

@@ -2,8 +2,8 @@
   "protocolVersion": "2.0",
   "id": "sess-thinking-id-20",
   "provider": "codex",
-  "entryCount": 2,
-  "entries": [
+  "messageCount": 2,
+  "messages": [
     {
       "id": "e1",
       "source": "s2",

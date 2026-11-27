@@ -4,7 +4,7 @@
     "protocolVersion": "2.0",
     "id": "sess-user",
     "provider": "claude",
-    "entries": [
+    "messages": [
       {
         "id": "e1",
         "source": "user",

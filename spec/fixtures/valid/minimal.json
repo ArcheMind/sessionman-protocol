@@ -2,6 +2,6 @@
   "protocolVersion": "2.0",
   "id": "sess-min-20",
   "provider": "someone-harness",
-  "entryCount": 0,
-  "entries": []
+  "messageCount": 0,
+  "messages": []
 }

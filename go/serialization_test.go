@@ -12,8 +12,8 @@ import (
 func TestContentBlockRoundTrip(t *testing.T) {
 	const input = `{
 		"protocolVersion":"2.0",
-		"id":"empty-text", "provider":"test", "entryCount":3,
-		"entries":[
+		"id":"empty-text", "provider":"test", "messageCount":3,
+		"messages":[
 			{"id":"assistant", "source":"s2", "mutability":"delta", "producer":{"provider":"test", "model":"test-model"}, "content":[
 				{"type":"text", "text":""},
 				{"type":"tool_use", "id":"call-1", "name":"read", "input":{"path":"file", "options":[true, 7]}},

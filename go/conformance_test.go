@@ -61,7 +61,7 @@ func TestValidFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseSession rejected YAML round trip: %v\n%s", err, yamlBytes)
 			}
-			if fromYAML.ID != session.ID || len(fromYAML.Entries) != len(session.Entries) {
+			if fromYAML.ID != session.ID || len(fromYAML.Messages) != len(session.Messages) {
 				t.Fatalf("YAML round trip mismatch: got %+v", fromYAML)
 			}
 		})
@@ -133,7 +133,7 @@ func TestV1UpgradeFixtures(t *testing.T) {
 	}
 }
 
-// ToolResult entries must serialize without "content"; every other entry must
+// ToolResult messages must serialize without "content"; every other message must
 // keep it, even when empty, since the schema requires it there.
 func TestMarshalContentPresence(t *testing.T) {
 	for _, path := range fixturePaths(t, "valid") {
@@ -145,8 +145,8 @@ func TestMarshalContentPresence(t *testing.T) {
 		if err := json.Unmarshal(data, &session); err != nil {
 			t.Fatal(err)
 		}
-		for _, entry := range session.Entries {
-			out, err := json.Marshal(entry)
+		for _, message := range session.Messages {
+			out, err := json.Marshal(message)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -154,8 +154,8 @@ func TestMarshalContentPresence(t *testing.T) {
 			if err := json.Unmarshal(out, &raw); err != nil {
 				t.Fatal(err)
 			}
-			if _, has := raw["content"]; has == (entry.ToolResult != nil) {
-				t.Fatalf("%s: entry %s: content presence wrong in %s", path, entry.ID, out)
+			if _, has := raw["content"]; has == (message.ToolResult != nil) {
+				t.Fatalf("%s: message %s: content presence wrong in %s", path, message.ID, out)
 			}
 		}
 	}
@@ -197,7 +197,7 @@ func TestMaterialize(t *testing.T) {
 		ProtocolVersion: ProtocolVersion,
 		ID:              "sess-dangling",
 		Provider:        "claude",
-		Entries: []Entry{
+		Messages: []Message{
 			{
 				ID:         "a1",
 				Source:     SourceS2,
@@ -208,15 +208,15 @@ func TestMaterialize(t *testing.T) {
 			},
 		},
 		RuntimeEvents: []RuntimeEvent{
-			{ID: "re-1", AfterEntryID: "a1", Provider: "claude", Kind: RuntimeTurnAborted},
+			{ID: "re-1", AfterMessageID: "a1", Provider: "claude", Kind: RuntimeTurnAborted},
 		},
 	}
 	mat := Materialize(dangling)
 	if len(mat) != 2 {
-		t.Fatalf("expected synthetic toolResult for dangling call, got %d entries", len(mat))
+		t.Fatalf("expected synthetic toolResult for dangling call, got %d messages", len(mat))
 	}
 	if mat[1].Source != SourceWorld || mat[1].Mutability != MutabilityDelta || mat[1].ToolResult == nil {
-		t.Fatalf("unexpected synthetic entry: %+v", mat[1])
+		t.Fatalf("unexpected synthetic message: %+v", mat[1])
 	}
 	if mat[1].ToolResult.ToolUseID != "call-orphan" || !mat[1].ToolResult.IsError {
 		t.Fatalf("unexpected synthetic toolResult: %+v", mat[1].ToolResult)
